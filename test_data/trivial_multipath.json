@@ -1,0 +1,168 @@
+{
+    "_comment": "https://github.com/lightningnetwork/lnd/blob/262591c3331c2170697fe89b8c49ab857db0adf7/lntest/itest/lnd_send_multi_path_payment_test.go#L23",
+    "directed": true,
+    "nodes": [
+        {
+            "id": "alice",
+            "addresses": "ipv4://135:9735",
+            "out_degree": 1,
+            "in_degree": 1
+        },
+        {
+            "id": "bob",
+            "addresses": "ipv4://112:9735",
+            "out_degree": 1,
+            "in_degree": 6
+        },
+        {
+            "id": "carol",
+            "addresses": "torv3://wu5mkpokybtbf6m6mqqqm2hwob6ndt5k74iujd2pdyd.onion:9735",
+            "out_degree": 30,
+            "in_degree": 44
+        },
+        {
+            "id": "dave",
+            "addresses": "ipv4://104:9735",
+            "out_degree": 1,
+            "in_degree": 6
+        },
+        {
+            "id": "eve",
+            "addresses": "ipv4://127.0",
+            "out_degree": 1,
+            "in_degree": 6
+        }
+    ],
+    "adjacency": [
+        [
+            {
+                "scid": "alice-carol",
+                "source": "alice",
+                "destination": "carol",
+                "fee_base_msat": 20,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 235000,
+                "cltv_expiry_delta": 5
+            },
+            {
+                "scid": "alice-dave",
+                "source": "alice",
+                "destination": "dave",
+                "fee_base_msat": 20,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 5
+            }
+        ],
+        [
+            {
+                "scid": "bob-dave",
+                "source": "bob",
+                "destination": "dave",
+                "fee_base_msat": 50,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 5
+            },
+            {
+                "scid": "bob-eve",
+                "source": "bob",
+                "destination": "eve",
+                "fee_base_msat": 10,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 5
+            },
+            {
+                "scid": "bob-carol",
+                "source": "bob",
+                "destination": "carol",
+                "fee_base_msat": 10,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 5
+            }
+        ],
+        [
+            {
+                "scid": "carol-alice",
+                "source": "carol",
+                "destination": "alice",
+                "fee_base_msat": 10,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 235000,
+                "cltv_expiry_delta": 5
+            },
+            {
+                "scid": "carol-eve",
+                "source": "carol",
+                "destination": "eve",
+                "fee_base_msat": 10,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 5
+            },
+            {
+                "scid": "carol-bob",
+                "source": "carol",
+                "destination": "bob",
+                "fee_base_msat": 300,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 5
+            }
+        ],
+        [
+            {
+                "scid": "dave-bob",
+                "source": "dave",
+                "destination": "bob",
+                "fee_base_msat": 500000,
+                "fee_proportional_millionths": 1000,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 40
+            },
+            {
+                "scid": "dave-alice",
+                "source": "dave",
+                "destination": "alice",
+                "fee_base_msat": 500000,
+                "fee_proportional_millionths": 1000,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 40
+            }
+        ],
+        [
+            {
+                "scid": "eve-bob",
+                "source": "eve",
+                "destination": "bob",
+                "fee_base_msat": 3,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 5
+            },
+            {
+                "scid": "eve-carol",
+                "source": "eve",
+                "destination": "carol",
+                "fee_base_msat": 20,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 135000,
+                "cltv_expiry_delta": 5
+            }
+        ]
+    ]
+}

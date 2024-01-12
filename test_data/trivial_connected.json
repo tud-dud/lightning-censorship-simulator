@@ -1,0 +1,116 @@
+{
+    "_comment": "fully connected network of 3 nodes",
+    "directed": true,
+    "multigraph": false,
+    "graph": [],
+    "nodes": [
+        {
+            "id": "034",
+            "addresses": "ipv4://212.108.220.135:9735",
+            "out_degree": 4,
+            "in_degree": 4
+        },
+        {
+            "id": "025",
+            "addresses": "ipv4://104.236.54.112:9735",
+            "out_degree": 1,
+            "in_degree": 6
+        },
+        {
+            "id": "036",
+            "addresses": "ipv4://218.250.157.241:9735,torv3://wu5mkpokybtbf6dwdaepnujbzxpm6mqqqm2hwob6ndt5k74iujd2pdyd.onion:9735",
+            "out_degree": 30,
+            "in_degree": 44
+        }
+    ],
+    "adjacency": [
+        [
+            {
+                "scid": "677836x2386x1/1",
+                "source": "034",
+                "destination": "036",
+                "fee_base_msat": 1000,
+                "fee_proportional_millionths": 1,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 83517000,
+                "cltv_expiry_delta": 40
+            },
+            {
+                "scid": "683464x931x0/0",
+                "source": "034",
+                "destination": "025",
+                "fee_base_msat": 1000,
+                "fee_proportional_millionths": 1,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 19800000,
+                "cltv_expiry_delta": 40,
+                "id": "034"
+            }
+        ],
+        [
+            {
+                "scid": "534826x1197x0/0",
+                "source": "025",
+                "destination": "034",
+                "fee_base_msat": 8994,
+                "fee_proportional_millionths": 56,
+                "htlc_minimim_msat": 61048,
+                "htlc_maximum_msat": 19800000,
+                "cltv_expiry_delta": 255,
+                "id": "025"
+            },
+            {
+                "scid": "687573x2798x0/1",
+                "source": "025",
+                "destination": "036",
+                "timestamp": 1630902100,
+                "features": "",
+                "fee_base_msat": 1000,
+                "fee_proportional_millionths": 1,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 348403000,
+                "cltv_expiry_delta": 40,
+                "id": "036"
+            }
+        ],
+        [
+            {
+                "scid": "566048x960x1/1",
+                "source": "036",
+                "destination": "025",
+                "fee_base_msat": 500,
+                "fee_proportional_millionths": 13,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 1150024000,
+                "cltv_expiry_delta": 40,
+                "id": "036"
+            },
+            {
+                "scid": "567500x1111x1/1",
+                "source": "036",
+                "destination": "034",
+                "timestamp": 1630945028,
+                "features": "",
+                "fee_base_msat": 500,
+                "fee_proportional_millionths": 13,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 2970000000,
+                "cltv_expiry_delta": 40,
+                "id": "036"
+            },
+            {
+                "scid": "568269x741x0/1",
+                "source": "036",
+                "destination": "024",
+                "timestamp": 1630184458,
+                "features": "",
+                "fee_base_msat": 500,
+                "fee_proportional_millionths": 13,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 934450000,
+                "cltv_expiry_delta": 40,
+                "id": "036"
+            }
+        ]
+    ]
+}

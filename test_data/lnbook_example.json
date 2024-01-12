@@ -1,0 +1,102 @@
+{
+    "_comment": "https://github.com/lnbook/lnbook/blob/develop/08_routing_htlcs.asciidoc#alice_dina_invoice_1",
+    "directed": true,
+    "multigraph": false,
+    "graph": [],
+    "nodes": [
+        {
+            "id": "alice",
+            "addresses": "ipv4://135:9735",
+            "out_degree": 1,
+            "in_degree": 1
+        },
+        {
+            "id": "bob",
+            "addresses": "ipv4://112:9735",
+            "out_degree": 1,
+            "in_degree": 6
+        },
+        {
+            "id": "chan",
+            "addresses": "torv3://wu5mkpokybtbf6m6mqqqm2hwob6ndt5k74iujd2pdyd.onion:9735",
+            "out_degree": 30,
+            "in_degree": 44
+        },
+        {
+            "id": "dina",
+            "addresses": "ipv4://104:9735",
+            "out_degree": 1,
+            "in_degree": 6
+        }
+    ],
+    "adjacency": [
+        [
+            {
+                "scid": "alice1",
+                "source": "alice",
+                "destination": "bob",
+                "fee_base_msat": 20,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 140000,
+                "cltv_expiry_delta": 5
+            }
+        ],
+        [
+            {
+                "scid": "bob1",
+                "source": "bob",
+                "destination": "alice",
+                "fee_base_msat": 200,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 140000,
+                "cltv_expiry_delta": 40
+            },
+            {
+                "scid": "bob2",
+                "source": "bob",
+                "destination": "chan",
+                "fee_base_msat": 100,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 5000000,
+                "cltv_expiry_delta": 40
+            }
+        ],
+        [
+            {
+                "scid": "chan1",
+                "source": "chan",
+                "destination": "bob",
+                "fee_base_msat": 100,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 5000000,
+                "cltv_expiry_delta": 20
+            },
+            {
+                "scid": "chan2",
+                "source": "chan",
+                "destination": "dina",
+                "fee_base_msat": 75,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 270000,
+                "cltv_expiry_delta": 15
+            }
+        ],
+        [
+            {
+                "scid": "dina1",
+                "source": "dina",
+                "destination": "chan",
+                "fee_base_msat": 1000,
+                "fee_proportional_millionths": 0,
+                "htlc_minimim_msat": 1000,
+                "htlc_maximum_msat": 270000,
+                "cltv_expiry_delta": 40
+            }
+        ]
+    ]
+}

@@ -1,5 +1,5 @@
 {
-    "_comment": "fully connected network of 3 nodes",
+    "_comment": "fully connected network of 3 nodes in LN research format",
     "directed": true,
     "multigraph": false,
     "graph": [],

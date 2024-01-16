@@ -1,0 +1,76 @@
+{
+    "_comment": "fully connected network of 3 nodes in LND format",
+    "nodes": [
+        {
+            "pub_key": "034"
+        },
+        {
+            "pub_key": "025"
+        },
+        {
+            "pub_key": "036"
+        }
+    ],
+    "edges": [
+        {
+            "channel_id": "677836x2386x1",
+            "node1_pub": "034",
+            "node2_pub": "036",
+            "capacity": 10000,
+            "node1_policy": {
+                "time_lock_delta": 40,
+                 "min_htlc": "1000",
+                 "fee_base_msat": "1000",
+                 "fee_rate_milli_msat": "1",
+                 "max_htlc_msat": "83517000"
+            },
+            "node2_policy": {
+                "time_lock_delta": 40,
+                 "min_htlc": "1000",
+                 "fee_base_msat": "500",
+                 "fee_rate_milli_msat": "13",
+                 "max_htlc_msat": "934450000"
+            }
+        },
+        {
+            "channel_id": "534826x1197x0",
+            "node1_pub": "025",
+            "node2_pub": "034",
+            "capacity": 10000,
+            "node1_policy": {
+                "time_lock_delta": 255,
+                 "min_htlc": "61048",
+                 "fee_base_msat": "8994",
+                 "fee_rate_milli_msat": "56",
+                 "max_htlc_msat": "19800000"
+            },
+            "node2_policy": {
+                "time_lock_delta": 40,
+                 "min_htlc": "1000",
+                 "fee_base_msat": "1000",
+                 "fee_rate_milli_msat": "1",
+                 "max_htlc_msat": "19800000"
+            }
+        },
+        {
+            "channel_id": "566048x960x1",
+            "node1_pub": "025",
+            "node2_pub": "036",
+            "capacity": 10000,
+            "node1_policy": {
+                "time_lock_delta": 40,
+                 "min_htlc": "1000",
+                 "fee_base_msat": "1000",
+                 "fee_rate_milli_msat": "1",
+                 "max_htlc_msat": "348403000"
+            },
+            "node2_policy": {
+                "time_lock_delta": 40,
+                 "min_htlc": "1000",
+                 "fee_base_msat": "500",
+                 "fee_rate_milli_msat": "13",
+                 "max_htlc_msat": "1150024000"
+            }
+        }
+    ]
+}

@@ -16,20 +16,13 @@ impl DbReader {
         DbReader { reader }
     }
 
-    pub fn lookup_asn(&self, ip: IpAddr) -> u32 {
+    pub fn lookup_asn(&self, ip: IpAddr) -> Option<u32> {
         let asn: Result<geoip2::Asn, MaxMindDBError> = self.reader.lookup(ip);
         match asn {
-            Ok(asn_info) => {
-                if let Some(as_num) = asn_info.autonomous_system_number {
-                    as_num
-                } else {
-                    warn!("No ASN entry found for {} in database.", ip);
-                    u32::default()
-                }
-            }
+            Ok(asn_info) => asn_info.autonomous_system_number,
             Err(err) => {
                 warn!("ASN lookup for {} failed: {}", ip, err);
-                u32::default()
+                None
             }
         }
     }
@@ -45,7 +38,7 @@ mod tests {
         let db_reader = DbReader::new();
         let example: IpAddr = FromStr::from_str("93.184.216.34").unwrap();
         let actual = db_reader.lookup_asn(example);
-        let expected = 15133;
+        let expected = Some(15133);
         assert_eq!(actual, expected);
     }
 
@@ -54,7 +47,15 @@ mod tests {
         let db_reader = DbReader::new();
         let zero_addr: IpAddr = FromStr::from_str("0.0.0.0").unwrap();
         let actual = db_reader.lookup_asn(zero_addr);
-        let expected = 0;
+        assert!(actual.is_none());
+    }
+
+    #[test]
+    fn valid_ipv6_lookup() {
+        let db_reader = DbReader::new();
+        let google: IpAddr = FromStr::from_str("2a00:1450:4005:80b::200e").unwrap();
+        let actual = db_reader.lookup_asn(google);
+        let expected = Some(15169);
         assert_eq!(actual, expected);
     }
 }

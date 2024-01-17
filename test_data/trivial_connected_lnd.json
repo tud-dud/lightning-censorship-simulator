@@ -2,13 +2,39 @@
     "_comment": "fully connected network of 3 nodes in LND format",
     "nodes": [
         {
-            "pub_key": "034"
+            "pub_key": "034",
+            "addresses": [
+                {
+                    "network": "tcp",
+                    "addr": "5.9.0.1:9735",
+                    "_isp": "hetzner"
+                },
+                {
+                    "network": "tcp",
+                    "addr": "[2a01:4f8:0:1::7:1]:9735",
+                    "_isp": "hetzner"
+                }
+            ]
         },
         {
-            "pub_key": "025"
+            "pub_key": "025",
+            "addresses": [
+                {
+                    "network": "tcp",
+                    "addr": "213.239.192.1:9735",
+                    "_isp": "hetzner"
+                }
+            ]
         },
         {
-            "pub_key": "036"
+            "pub_key": "036",
+            "addresses": [
+                {
+                    "network": "tcp",
+                    "addr": "135.209.152.1:9735",
+                    "_isp": "AT&T"
+                }
+            ]
         }
     ],
     "edges": [

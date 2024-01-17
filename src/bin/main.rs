@@ -49,6 +49,16 @@ fn main() {
         "Graph metrics will be written to {:#?}/ directory.",
         output_dir
     );
+    let nodes_wo_address: f32 = graph
+        .get_nodes()
+        .iter()
+        .map(|n| n.addresses.len())
+        .filter(|n| *n < 1)
+        .count() as f32;
+    info!(
+        "{}% of nodes without a network address",
+        (nodes_wo_address / graph.node_count() as f32) * 100.0
+    );
     let amounts = if let Some(amount) = args.amount {
         vec![amount]
     } else {

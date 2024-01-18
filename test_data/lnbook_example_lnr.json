@@ -6,27 +6,31 @@
     "nodes": [
         {
             "id": "alice",
-            "addresses": "ipv4://135:9735",
+            "addresses": "ipv4://5.9.0.1:9735",
             "out_degree": 1,
-            "in_degree": 1
+            "in_degree": 1,
+            "_isp": "hetzner"
         },
         {
             "id": "bob",
-            "addresses": "ipv4://112:9735",
+            "addresses": "ipv6://[2a01:4f8:0:1::7:1]:9735",
             "out_degree": 1,
-            "in_degree": 6
+            "in_degree": 6,
+            "_isp": "hetzner"
         },
         {
             "id": "chan",
-            "addresses": "torv3://wu5mkpokybtbf6m6mqqqm2hwob6ndt5k74iujd2pdyd.onion:9735",
+            "addresses": "ipv4://135.209.152.2:9735",
             "out_degree": 30,
-            "in_degree": 44
+            "in_degree": 44,
+            "_isp": "AT&T"
         },
         {
             "id": "dina",
-            "addresses": "ipv4://104:9735",
+            "addresses": "ipv4://135.209.152.1:9735",
             "out_degree": 1,
-            "in_degree": 6
+            "in_degree": 6,
+            "_isp": "AT&T"
         }
     ],
     "adjacency": [

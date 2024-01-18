@@ -1,3 +1,4 @@
+use super::Asn;
 use log::{debug, warn};
 use maxminddb::{geoip2, MaxMindDBError};
 use std::net::IpAddr;
@@ -16,7 +17,7 @@ impl DbReader {
         DbReader { reader }
     }
 
-    pub fn lookup_asn(&self, ip: IpAddr) -> Option<u32> {
+    pub fn lookup_asn(&self, ip: IpAddr) -> Option<Asn> {
         let asn: Result<geoip2::Asn, MaxMindDBError> = self.reader.lookup(ip);
         match asn {
             Ok(asn_info) => asn_info.autonomous_system_number,

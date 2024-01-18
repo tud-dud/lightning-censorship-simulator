@@ -1,7 +1,8 @@
 use clap::Parser;
 use log::{error, info, LevelFilter};
-use simlib::{PaymentParts, RoutingMetric, Simulation};
 use std::path::PathBuf;
+
+use simulator::SimBuilder;
 
 #[derive(clap::Parser)]
 #[command(name = "simulator", version, about)]
@@ -19,8 +20,14 @@ struct Cli {
     /// Set the seed for the simulation
     #[arg(long, short, default_value_t = 19)]
     _run: u64,
-    #[arg(long = "graph-source", default_value = "lnd")]
+    #[arg(long = "graph-source", short = 'g', default_value = "lnd")]
     graph_type: network_parser::GraphSource,
+    /// Number of src/dest pairs to use in the simulation
+    #[arg(long = "payments", short = 'p', default_value_t = 1000)]
+    num_pairs: usize,
+    /// The number of adversarial ASs to simulate (top-n)
+    #[arg(long = "num-as", short = 'n', default_value_t = 5)]
+    num_adv_as: usize,
     verbose: bool,
 }
 
@@ -46,38 +53,19 @@ fn main() {
         PathBuf::from("sim-results")
     };
     info!(
-        "Graph metrics will be written to {:#?}/ directory.",
+        "Simulation results will be written to {:#?}/ directory.",
         output_dir
-    );
-    let nodes_wo_address: f32 = graph
-        .get_nodes()
-        .iter()
-        .map(|n| n.addresses.len())
-        .filter(|n| *n < 1)
-        .count() as f32;
-    info!(
-        "{}% of nodes without a network address",
-        (nodes_wo_address / graph.node_count() as f32) * 100.0
     );
     let amounts = if let Some(amount) = args.amount {
         vec![amount]
     } else {
-        vec![1000, 10000, 100000, 1000000, 10000000]
+        vec![100, 1000, 10000, 100000, 1000000, 10000000]
     };
-    //let results = Vec::with_capacity(amounts.len());
     amounts.iter().for_each(|amount| {
         info!("Starting simulation for {amount} sat.");
-        let amount = simlib::to_millisatoshi(*amount);
-        let _sim = Simulation::new(
-            0,
-            graph.clone(),
-            amount,
-            RoutingMetric::MinFee,
-            PaymentParts::Split,
-            None,
-            &[],
-        );
+        let msat = simlib::to_millisatoshi(*amount);
+        let mut builder = SimBuilder::new(&graph, msat, args.num_pairs, args.num_adv_as);
+        builder.simulate();
         info!("Completed simulation for {amount} sat.");
     });
-    info!("Starting simulation..");
 }

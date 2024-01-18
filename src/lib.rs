@@ -1,1 +1,4 @@
-pub(crate) mod net;
+mod net;
+mod sim;
+
+pub use sim::*;

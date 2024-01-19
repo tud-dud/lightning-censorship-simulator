@@ -1,8 +1,12 @@
 use clap::Parser;
 use log::{error, info, LevelFilter};
-use std::path::PathBuf;
+use rayon::prelude::*;
+use std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
-use simulator::SimBuilder;
+use simulator::{Report, SimBuilder};
 
 #[derive(clap::Parser)]
 #[command(name = "simulator", version, about)]
@@ -19,7 +23,7 @@ struct Cli {
     amount: Option<usize>,
     /// Set the seed for the simulation
     #[arg(long, short, default_value_t = 19)]
-    _run: u64,
+    run: u64,
     #[arg(long = "graph-source", short = 'g', default_value = "lnd")]
     graph_type: network_parser::GraphSource,
     /// Number of src/dest pairs to use in the simulation
@@ -61,11 +65,20 @@ fn main() {
     } else {
         vec![100, 1000, 10000, 100000, 1000000, 10000000]
     };
-    amounts.iter().for_each(|amount| {
+    let mut sim_report = Report(args.run, vec![]);
+    let results = Arc::new(Mutex::new(Vec::with_capacity(amounts.len())));
+    amounts.par_iter().for_each(|amount| {
         info!("Starting simulation for {amount} sat.");
         let msat = simlib::to_millisatoshi(*amount);
-        let mut builder = SimBuilder::new(&graph, msat, args.num_pairs, args.num_adv_as);
-        builder.simulate();
+        let mut builder = SimBuilder::new(args.run, &graph, msat, args.num_pairs, args.num_adv_as);
+        let sim_output = builder.simulate();
+        results.lock().unwrap().push(sim_output);
         info!("Completed simulation for {amount} sat.");
     });
+    if let Ok(s) = results.lock() {
+        sim_report.1 = s.clone();
+    }
+    sim_report
+        .write_to_file(output_dir)
+        .expect("Failed to write report to file.");
 }

@@ -11,6 +11,7 @@ use std::println as info;
 use super::output::SimOutput;
 
 pub struct SimBuilder {
+    pub(crate) run: u64,
     pub(crate) graph: Graph,
     /// Amount to simulate in milli satoshis
     pub(crate) amt_msat: usize,
@@ -21,8 +22,15 @@ pub struct SimBuilder {
 }
 
 impl SimBuilder {
-    pub fn new(graph: &Graph, amt_msat: usize, num_payments: usize, num_adv_as: usize) -> Self {
+    pub fn new(
+        run: u64,
+        graph: &Graph,
+        amt_msat: usize,
+        num_payments: usize,
+        num_adv_as: usize,
+    ) -> Self {
         Self {
+            run,
             graph: graph.clone(),
             amt_msat,
             num_payments,
@@ -35,14 +43,14 @@ impl SimBuilder {
     pub fn simulate(&mut self) -> SimOutput {
         let attack_asns = self.get_adverserial_asns();
         let mut sim_output = SimOutput {
+            total_num_payments: self.num_payments,
             amt_sat: simlib::to_sat(self.amt_msat),
             attack_sim: Vec::with_capacity(attack_asns.len()),
             ..Default::default()
         };
         let pairs = Simulation::draw_n_pairs_for_simulation(&self.graph, self.num_payments);
-        let run = 0;
         let mut baseline_sim = Simulation::new(
-            run,
+            self.run,
             self.graph.clone(),
             self.amt_msat,
             RoutingMetric::MinFee,
@@ -53,7 +61,7 @@ impl SimBuilder {
         let baseline_result = baseline_sim.run(pairs.clone(), None, false);
         sim_output.baseline_sim = SimResult::from_simlib_results(baseline_result, 0);
         for (asn, nodes) in attack_asns.iter() {
-            let attack_sim = self.per_asn_simulation(pairs.clone(), *asn, nodes, run);
+            let attack_sim = self.per_asn_simulation(pairs.clone(), *asn, nodes, self.run);
             sim_output.attack_sim.push(attack_sim);
         }
         sim_output
@@ -137,8 +145,10 @@ mod tests {
         let amt_msat = 1000;
         let num_pairs = 3;
         let num_adv_as = 1;
-        let actual = SimBuilder::new(&graph, amt_msat, num_pairs, num_adv_as);
+        let run = 0;
+        let actual = SimBuilder::new(run, &graph, amt_msat, num_pairs, num_adv_as);
         let expected = SimBuilder {
+            run,
             graph: graph.clone(),
             amt_msat: 1000,
             num_payments: 3,
@@ -163,7 +173,8 @@ mod tests {
         let amt_msat = 1000;
         let num_pairs = 3;
         let num_adv_as = 1;
-        let sim_builder = SimBuilder::new(&graph, amt_msat, num_pairs, num_adv_as);
+        let run = 0;
+        let sim_builder = SimBuilder::new(run, &graph, amt_msat, num_pairs, num_adv_as);
         let actual = sim_builder.get_adverserial_asns();
         let expected = vec![(24940, vec!["bob".to_owned(), "alice".to_owned()])];
         assert_eq!(actual, expected);
@@ -182,30 +193,35 @@ mod tests {
         let amt_msat = 1000000;
         let num_pairs = 3;
         let num_adv_as = 1;
-        let mut builder = SimBuilder::new(&graph, amt_msat, num_pairs, num_adv_as);
+        let run = 0;
+        let mut builder = SimBuilder::new(run, &graph, amt_msat, num_pairs, num_adv_as);
         let actual = builder.simulate();
         let expected = SimOutput {
             amt_sat: 1000,
+            total_num_payments: num_pairs,
             baseline_sim: SimResult {
-                num_nodes: 0,
+                num_nodes_under_attack: 0,
                 num_failed: 0,
                 num_successful: 3,
+                payments: vec![],
             },
             attack_sim: vec![AttackSim {
                 asn: 24940,
                 sim_results: vec![SimResult {
-                    num_nodes: 1,
+                    num_nodes_under_attack: 1,
                     num_failed: 3,
                     num_successful: 0,
+                    payments: vec![],
                 }],
             }],
         };
         assert_eq!(actual.amt_sat, expected.amt_sat);
         assert_eq!(
-            actual.baseline_sim.num_nodes,
-            expected.baseline_sim.num_nodes
+            actual.baseline_sim.num_nodes_under_attack,
+            expected.baseline_sim.num_nodes_under_attack
         );
         assert_eq!(actual.attack_sim.len(), expected.attack_sim.len());
+        assert_eq!(actual.baseline_sim.payments.len(), num_pairs);
         for i in 0..actual.attack_sim.len() {
             assert_eq!(actual.attack_sim[i].asn, expected.attack_sim[i].asn);
         }

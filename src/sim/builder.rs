@@ -95,7 +95,7 @@ impl SimBuilder {
             sim_results.push(SimResult::from_simlib_results(sim_result, n + 1));
         }
         summary.sim_results = sim_results;
-        info!("Completed attack simulation by AS {}.", asn);
+        info!("Completed attack by AS {} simulation.", asn);
         summary
     }
 

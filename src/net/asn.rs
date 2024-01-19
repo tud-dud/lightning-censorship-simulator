@@ -61,12 +61,15 @@ impl AsIpMap {
                     .len()
                     .cmp(&graph.get_edges_for_node(a).unwrap_or_default().len())
             });
-            heap.push(Reverse((asn, nodes.clone())));
+            heap.push(Reverse((nodes.len(), asn, nodes.clone())));
             if heap.len() > n {
                 heap.pop();
             }
         }
-        heap.into_sorted_vec().into_iter().map(|r| r.0).collect()
+        heap.into_sorted_vec()
+            .into_iter()
+            .map(|r| (r.0 .1, r.0 .2))
+            .collect()
     }
 }
 
@@ -118,5 +121,22 @@ mod tests {
             (797, vec!["chan".to_owned(), "dina".to_owned()]),
         ];
         assert_eq!(actual, expected);
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/trivial_connected_lnd.json"),
+                Lnd,
+            )
+            .unwrap(),
+            Lnd,
+        );
+        let n = 1;
+        let as_ip_map = AsIpMap::new(&graph.get_nodes());
+        let actual = as_ip_map.top_n_asns(n, &graph);
+        let expected = vec![(24940, vec!["025".to_owned(), "034".to_owned()])];
+        assert_eq!(actual.len(), expected.len());
+        assert_eq!(actual[0].0, expected[0].0);
+        for a in actual[0].1.iter() {
+            assert!(expected[0].1.contains(&a));
+        }
     }
 }

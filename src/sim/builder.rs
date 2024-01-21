@@ -45,8 +45,7 @@ impl SimBuilder {
         let mut sim_output = SimOutput {
             total_num_payments: self.num_payments,
             amt_sat: simlib::to_sat(self.amt_msat),
-            attack_sim: Vec::with_capacity(attack_asns.len()),
-            ..Default::default()
+            attack_results: Vec::with_capacity(attack_asns.len() + 1),
         };
         let pairs = Simulation::draw_n_pairs_for_simulation(&self.graph, self.num_payments);
         let mut baseline_sim = Simulation::new(
@@ -59,10 +58,13 @@ impl SimBuilder {
             &[],
         );
         let baseline_result = baseline_sim.run(pairs.clone(), None, false);
-        sim_output.baseline_sim = SimResult::from_simlib_results(baseline_result, 0);
         for (asn, nodes) in attack_asns.iter() {
-            let attack_sim = self.per_asn_simulation(pairs.clone(), *asn, nodes, self.run);
-            sim_output.attack_sim.push(attack_sim);
+            let mut attack_sim = self.per_asn_simulation(pairs.clone(), *asn, nodes, self.run);
+            attack_sim.sim_results.insert(
+                0,
+                SimResult::from_simlib_results(baseline_result.clone(), 0),
+            );
+            sim_output.attack_results.push(attack_sim);
         }
         sim_output
     }
@@ -199,31 +201,28 @@ mod tests {
         let expected = SimOutput {
             amt_sat: 1000,
             total_num_payments: num_pairs,
-            baseline_sim: SimResult {
-                num_nodes_under_attack: 0,
-                num_failed: 0,
-                num_successful: 3,
-                payments: vec![],
-            },
-            attack_sim: vec![AttackSim {
+            attack_results: vec![AttackSim {
                 asn: 24940,
-                sim_results: vec![SimResult {
-                    num_nodes_under_attack: 1,
-                    num_failed: 3,
-                    num_successful: 0,
-                    payments: vec![],
-                }],
+                sim_results: vec![
+                    SimResult {
+                        num_nodes_under_attack: 0,
+                        num_failed: 0,
+                        num_successful: 3,
+                        payments: vec![],
+                    },
+                    SimResult {
+                        num_nodes_under_attack: 1,
+                        num_failed: 3,
+                        num_successful: 0,
+                        payments: vec![],
+                    },
+                ],
             }],
         };
         assert_eq!(actual.amt_sat, expected.amt_sat);
-        assert_eq!(
-            actual.baseline_sim.num_nodes_under_attack,
-            expected.baseline_sim.num_nodes_under_attack
-        );
-        assert_eq!(actual.attack_sim.len(), expected.attack_sim.len());
-        assert_eq!(actual.baseline_sim.payments.len(), num_pairs);
-        for i in 0..actual.attack_sim.len() {
-            assert_eq!(actual.attack_sim[i].asn, expected.attack_sim[i].asn);
+        assert_eq!(actual.attack_results.len(), expected.attack_results.len());
+        for i in 0..actual.attack_results.len() {
+            assert_eq!(actual.attack_results[i].asn, expected.attack_results[i].asn);
         }
     }
 }

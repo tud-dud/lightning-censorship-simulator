@@ -18,9 +18,8 @@ pub struct Report(pub u64, pub Vec<SimOutput>);
 pub struct SimOutput {
     pub amt_sat: usize,
     pub total_num_payments: usize,
-    /// Sim results when no nodes are under attack
-    pub baseline_sim: SimResult,
-    pub attack_sim: Vec<AttackSim>,
+    /// Includes baseline results when no nodes are under attack
+    pub attack_results: Vec<AttackSim>,
 }
 
 #[derive(Debug, Default, Clone, Serialize)]

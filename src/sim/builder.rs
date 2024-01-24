@@ -80,9 +80,9 @@ impl SimBuilder {
         nodes: &[ID],
         run: u64,
     ) -> AttackSim {
-        let max_nodes_under_attack = std::cmp::min(5, nodes.len());
+        let max_nodes_under_attack = nodes.len();
         info!(
-            "Simulating up to {} nodes under attack by AS {}.",
+            "Simulating {} nodes under attack by AS {}.",
             max_nodes_under_attack, asn
         );
         let mut summary = AttackSim {
@@ -91,23 +91,20 @@ impl SimBuilder {
         };
         let mut sim_results = vec![];
         let mut sim_graph = self.graph.clone();
-        for (n, node) in nodes.iter().enumerate() {
-            if n == max_nodes_under_attack {
-                break;
-            }
+        for node in nodes.iter() {
             sim_graph.remove_node(node);
-            let mut sim = Simulation::new(
-                run,
-                sim_graph.clone(),
-                self.amt_msat,
-                RoutingMetric::MinFee,
-                PaymentParts::Split,
-                Some(vec![0]),
-                &[],
-            );
-            let sim_result = sim.run(pairs.to_owned(), None, false);
-            sim_results.push(SimResult::from_simlib_results(sim_result, n + 1));
         }
+        let mut sim = Simulation::new(
+            run,
+            sim_graph.clone(),
+            self.amt_msat,
+            RoutingMetric::MinFee,
+            PaymentParts::Split,
+            Some(vec![0]),
+            &[],
+        );
+        let sim_result = sim.run(pairs.to_owned(), None, false);
+        sim_results.push(SimResult::from_simlib_results(sim_result, nodes.len()));
         summary.sim_results = sim_results;
         info!("Completed attack by AS {} simulation.", asn);
         summary

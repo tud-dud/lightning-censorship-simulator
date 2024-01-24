@@ -1,6 +1,7 @@
 use crate::{
     net::{AsIpMap, Asn},
-    sim::output::*, AsSelectionStrategy,
+    sim::output::*,
+    AsSelectionStrategy,
 };
 #[cfg(not(test))]
 use log::info;
@@ -125,10 +126,15 @@ impl SimBuilder {
         );
         let as_ip_map = AsIpMap::new(&self.graph);
         let num_adv_as = std::cmp::min(self.num_adv_as, as_ip_map.as_to_nodes.len());
-        info!("Simulating top {} ASs as adversaries.", num_adv_as);
+        info!(
+            "Simulating {} {:?} ASs as adversaries.",
+            num_adv_as, self.as_selection
+        );
         match self.as_selection {
             AsSelectionStrategy::MaxNodes => as_ip_map.top_n_asns_nodes(num_adv_as, &self.graph),
-            AsSelectionStrategy::MaxChannels => as_ip_map.top_n_asns_channels(num_adv_as, &self.graph)
+            AsSelectionStrategy::MaxChannels => {
+                as_ip_map.top_n_asns_channels(num_adv_as, &self.graph)
+            }
         }
     }
 }
@@ -154,7 +160,14 @@ mod tests {
         let num_pairs = 3;
         let num_adv_as = 1;
         let run = 0;
-        let actual = SimBuilder::new(run, &graph, amt_msat, num_pairs, num_adv_as, AsSelectionStrategy::MaxChannels);
+        let actual = SimBuilder::new(
+            run,
+            &graph,
+            amt_msat,
+            num_pairs,
+            num_adv_as,
+            AsSelectionStrategy::MaxChannels,
+        );
         let expected = SimBuilder {
             run,
             graph: graph.clone(),
@@ -184,7 +197,14 @@ mod tests {
         let num_pairs = 3;
         let num_adv_as = 1;
         let run = 0;
-        let sim_builder = SimBuilder::new(run, &graph, amt_msat, num_pairs, num_adv_as, AsSelectionStrategy::MaxNodes);
+        let sim_builder = SimBuilder::new(
+            run,
+            &graph,
+            amt_msat,
+            num_pairs,
+            num_adv_as,
+            AsSelectionStrategy::MaxNodes,
+        );
         let actual = sim_builder.get_adverserial_asns();
         let expected = vec![(24940, vec!["bob".to_owned(), "alice".to_owned()])];
         assert_eq!(actual, expected);
@@ -204,7 +224,14 @@ mod tests {
         let num_pairs = 3;
         let num_adv_as = 1;
         let run = 0;
-        let mut builder = SimBuilder::new(run, &graph, amt_msat, num_pairs, num_adv_as, AsSelectionStrategy::MaxNodes);
+        let mut builder = SimBuilder::new(
+            run,
+            &graph,
+            amt_msat,
+            num_pairs,
+            num_adv_as,
+            AsSelectionStrategy::MaxNodes,
+        );
         let actual = builder.simulate();
         let expected = SimOutput {
             amt_sat: 1000,

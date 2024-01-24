@@ -1,12 +1,12 @@
 use clap::Parser;
-use log::{error, info, LevelFilter, warn};
+use log::{error, info, warn, LevelFilter};
 use rayon::prelude::*;
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
 
-use simulator::{Report, SimBuilder, AsSelectionStrategy};
+use simulator::{AsSelectionStrategy, Report, SimBuilder};
 
 #[derive(clap::Parser)]
 #[command(name = "simulator", version, about)]
@@ -68,20 +68,30 @@ fn main() {
     } else {
         vec![100, 1000, 10000, 100000, 1000000, 10000000]
     };
-        let as_selection_strategy = match args.strategy {
-            0 => AsSelectionStrategy::MaxNodes,
-            1 => AsSelectionStrategy::MaxChannels,
-            _ => {
-                warn!("Invalid AsSelectionStrategy. Defaulting to {:?}", AsSelectionStrategy::MaxNodes);
+    let as_selection_strategy = match args.strategy {
+        0 => AsSelectionStrategy::MaxNodes,
+        1 => AsSelectionStrategy::MaxChannels,
+        _ => {
+            warn!(
+                "Invalid AsSelectionStrategy. Defaulting to {:?}",
                 AsSelectionStrategy::MaxNodes
-            }
-        };
+            );
+            AsSelectionStrategy::MaxNodes
+        }
+    };
     let mut sim_report = Report(args.run, vec![]);
     let results = Arc::new(Mutex::new(Vec::with_capacity(amounts.len())));
     amounts.par_iter().for_each(|amount| {
         info!("Starting simulation for {amount} sat.");
         let msat = simlib::to_millisatoshi(*amount);
-        let mut builder = SimBuilder::new(args.run, &graph, msat, args.num_pairs, args.num_adv_as, as_selection_strategy);
+        let mut builder = SimBuilder::new(
+            args.run,
+            &graph,
+            msat,
+            args.num_pairs,
+            args.num_adv_as,
+            as_selection_strategy,
+        );
         let sim_output = builder.simulate();
         results.lock().unwrap().push(sim_output);
         info!("Completed simulation for {amount} sat.");

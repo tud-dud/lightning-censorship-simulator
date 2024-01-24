@@ -33,9 +33,7 @@ impl AsIpMap {
             "Found a total of {} ASNs in input graph.",
             as_to_nodes.len()
         );
-        Self {
-            as_to_nodes,
-        }
+        Self { as_to_nodes }
     }
 
     /// Returns an ordered list of the n most-represented ASNs w.r.t the number of nodes.
@@ -51,7 +49,7 @@ impl AsIpMap {
                     .len()
                     .cmp(&graph.get_edges_for_node(a).unwrap_or_default().len())
             });
-            heap.push(Reverse((nodes.len(), asn, nodes.clone())));
+            heap.push(Reverse((nodes.len(), asn, nodes)));
             if heap.len() > n {
                 heap.pop();
             }
@@ -67,7 +65,10 @@ impl AsIpMap {
     pub(crate) fn top_n_asns_channels(&self, n: usize, graph: &Graph) -> Vec<(Asn, Vec<ID>)> {
         let mut heap = BinaryHeap::with_capacity(n + 1);
         for (asn, mut nodes) in self.as_to_nodes.clone().into_iter() {
-            let sum_channels: usize = nodes.iter().map(|n| graph.get_edges_for_node(n).unwrap_or_default().len()).sum();
+            let sum_channels: usize = nodes
+                .iter()
+                .map(|n| graph.get_edges_for_node(n).unwrap_or_default().len())
+                .sum();
             // sort in descending order of number of channels
             nodes.sort_by(|a, b| {
                 graph
@@ -76,7 +77,7 @@ impl AsIpMap {
                     .len()
                     .cmp(&graph.get_edges_for_node(a).unwrap_or_default().len())
             });
-            heap.push(Reverse((sum_channels, asn, nodes.clone())));
+            heap.push(Reverse((sum_channels, asn, nodes)));
             if heap.len() > n {
                 heap.pop();
             }

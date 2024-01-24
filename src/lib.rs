@@ -1,6 +1,7 @@
 mod net;
 mod sim;
 
+pub use net::*;
 pub use sim::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

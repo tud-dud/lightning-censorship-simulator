@@ -121,7 +121,7 @@ impl SimBuilder {
             "{}% of nodes without a network address",
             (nodes_wo_address / nodes.len() as f32) * 100.0
         );
-        let as_ip_map = AsIpMap::new(&self.graph);
+        let as_ip_map = AsIpMap::new(&self.graph, false);
         let num_adv_as = std::cmp::min(self.num_adv_as, as_ip_map.as_to_nodes.len());
         info!(
             "Simulating {} {:?} ASs as adversaries.",

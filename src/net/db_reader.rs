@@ -29,6 +29,12 @@ impl DbReader {
     }
 }
 
+impl Default for DbReader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

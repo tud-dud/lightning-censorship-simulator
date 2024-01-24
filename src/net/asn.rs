@@ -12,17 +12,17 @@ use log::{info, trace, warn};
 #[cfg(test)]
 use std::{println as info, println as warn, println as trace};
 
-pub(crate) struct AsIpMap {
-    pub(crate) as_to_nodes: HashMap<Asn, Vec<ID>>,
+pub struct AsIpMap {
+    pub as_to_nodes: HashMap<Asn, Vec<ID>>,
 }
 
 impl AsIpMap {
-    pub(crate) fn new(graph: &Graph) -> Self {
+    pub fn new(graph: &Graph, include_tor: bool) -> Self {
         let db_reader = DbReader::new();
         let mut as_to_nodes = HashMap::default();
         let nodes = graph.get_nodes();
         for node in nodes {
-            if let Some(asn) = Self::lookup_asn_for_node(&db_reader, &node) {
+            if let Some(asn) = Self::lookup_asn_for_node(&db_reader, &node, include_tor) {
                 as_to_nodes
                     .entry(asn)
                     .and_modify(|m: &mut Vec<ID>| m.push(node.id.to_owned()))
@@ -88,7 +88,7 @@ impl AsIpMap {
             .collect()
     }
 
-    fn lookup_asn_for_node(db_reader: &DbReader, node: &Node) -> Option<Asn> {
+    fn lookup_asn_for_node(db_reader: &DbReader, node: &Node, include_tor: bool) -> Option<Asn> {
         for addr in &node.addresses {
             if !addr.addr.contains("onion") {
                 if let Ok(ip) = FromStr::from_str(&addr.addr) {
@@ -99,6 +99,10 @@ impl AsIpMap {
                     }
                 } else {
                     warn!("Unable to convert {:?} to IpAddr.", addr.addr);
+                }
+            } else if include_tor {
+                if node.addresses.len() == 1 {
+                    return Some(0);
                 }
             } else {
                 trace!("Skipping onion address.");
@@ -126,7 +130,8 @@ mod tests {
             .unwrap(),
             Lnd,
         );
-        let as_ip_map = AsIpMap::new(&graph);
+        let include_tor = false;
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
         let actual = as_ip_map.as_to_nodes;
         let expected = HashMap::from([
             (797, vec!["036".to_owned()]),
@@ -143,7 +148,8 @@ mod tests {
     fn asn_lookup() {
         let db_reader = DbReader::new();
         let node = Node::default();
-        let actual = AsIpMap::lookup_asn_for_node(&db_reader, &node);
+        let include_tor = false;
+        let actual = AsIpMap::lookup_asn_for_node(&db_reader, &node, include_tor);
         let expected = None;
         assert_eq!(expected, actual);
         let node = Node {
@@ -160,7 +166,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        let actual = AsIpMap::lookup_asn_for_node(&db_reader, &node);
+        let actual = AsIpMap::lookup_asn_for_node(&db_reader, &node, include_tor);
         let expected = Some(15169);
         assert_eq!(expected, actual);
     }
@@ -175,7 +181,8 @@ mod tests {
             Lnresearch,
         );
         let n = 2;
-        let as_ip_map = AsIpMap::new(&graph);
+        let include_tor = false;
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
         let actual = as_ip_map.top_n_asns_nodes(n, &graph);
         let expected = vec![
             (24940, vec!["bob".to_owned(), "alice".to_owned()]),
@@ -191,7 +198,7 @@ mod tests {
             Lnd,
         );
         let n = 1;
-        let as_ip_map = AsIpMap::new(&graph);
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
         let actual = as_ip_map.top_n_asns_nodes(n, &graph);
         let expected = vec![(24940, vec!["025".to_owned(), "034".to_owned()])];
         assert_eq!(actual.len(), expected.len());
@@ -212,7 +219,8 @@ mod tests {
             Lnresearch,
         );
         let n = 2;
-        let as_ip_map = AsIpMap::new(&graph);
+        let include_tor = false;
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
         let actual = as_ip_map.top_n_asns_channels(n, &graph);
         let expected = vec![
             (24940, vec!["bob".to_owned(), "alice".to_owned()]),
@@ -228,7 +236,7 @@ mod tests {
             Lnd,
         );
         let n = 1;
-        let as_ip_map = AsIpMap::new(&graph);
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
         let actual = as_ip_map.top_n_asns_channels(n, &graph);
         let expected = vec![(24940, vec!["025".to_owned(), "034".to_owned()])];
         assert_eq!(actual.len(), expected.len());

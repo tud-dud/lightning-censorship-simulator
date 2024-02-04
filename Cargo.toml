@@ -23,5 +23,9 @@ name = "simulator"
 path = "src/bin/main.rs"
 
 [[bin]]
-name = "topology"
-path = "src/bin/topology.rs"
+name = "as_node_degree"
+path = "src/bin/as_node_degree.rs"
+
+[[bin]]
+name = "intra_channels"
+path = "src/bin/intra_channels.rs"

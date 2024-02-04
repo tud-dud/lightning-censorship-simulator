@@ -6,7 +6,7 @@ use simulator::AsIpMap;
 use std::{collections::HashMap, error::Error, path::PathBuf};
 
 #[derive(clap::Parser)]
-#[command(name = "simulator", version, about)]
+#[command(name = "as-degree", version, about)]
 struct Cli {
     /// Path to JSON ile describing topology
     graph_file: PathBuf,

@@ -110,6 +110,44 @@ impl AsIpMap {
         }
         None
     }
+
+    pub fn get_intra_as_channels_ratio(&self, graph: &Graph) -> HashMap<u32, Vec<f32>> {
+        let mut per_node_ratio = HashMap::new();
+        let find_key_for_value = |map: &HashMap<u32, Vec<_>>, value: &String| -> Option<u32> {
+            map.iter().find_map(|(key, val)| {
+                if val.contains(value) {
+                    Some(*key)
+                } else {
+                    None
+                }
+            })
+        };
+
+        for (asn, nodes) in self.as_to_nodes.iter() {
+            per_node_ratio.insert(*asn, vec![]);
+            for node in nodes {
+                if let Some(edges) = graph.get_edges_for_node(node) {
+                    let total = edges.len();
+                    if total.eq(&0) {
+                        // shouldnt happen
+                        break;
+                    }
+                    let mut same_asn = 0;
+                    for e in edges.iter() {
+                        if let Some(dst_asn) = find_key_for_value(&self.as_to_nodes, &e.destination)
+                        {
+                            if dst_asn == *asn {
+                                same_asn += 1;
+                            }
+                        }
+                    }
+                    let ratio = f32::trunc((same_asn as f32 / total as f32) * 100.0) / 100.0;
+                    per_node_ratio.entry(*asn).and_modify(|r| r.push(ratio));
+                }
+            }
+        }
+        per_node_ratio
+    }
 }
 
 #[cfg(test)]
@@ -243,6 +281,49 @@ mod tests {
         assert_eq!(actual[0].0, expected[0].0);
         for a in actual[0].1.iter() {
             assert!(expected[0].1.contains(&a));
+        }
+    }
+
+    #[test]
+    fn intra_channels_rate() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/lnbook_example_lnr.json"),
+                Lnresearch,
+            )
+            .unwrap(),
+            Lnresearch,
+        );
+        let include_tor = true;
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
+        let actual = as_ip_map.get_intra_as_channels_ratio(&graph);
+        let expected = HashMap::from([(24940, vec![0.5, 1.0]), (797, vec![0.5, 1.0])]);
+        assert_eq!(actual.len(), expected.len());
+        for a in actual {
+            let e = expected.get(&a.0).unwrap();
+            assert_eq!(a.1.len(), e.len());
+            for expected_ratio in e {
+                assert!(a.1.contains(expected_ratio));
+            }
+        }
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/trivial_connected_lnd.json"),
+                Lnd,
+            )
+            .unwrap(),
+            Lnd,
+        );
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
+        let actual = as_ip_map.get_intra_as_channels_ratio(&graph);
+        let expected = HashMap::from([(24940, vec![0.5, 0.5]), (797, vec![0.])]);
+        assert_eq!(actual.len(), expected.len());
+        for a in actual {
+            let e = expected.get(&a.0).unwrap();
+            assert_eq!(a.1.len(), e.len());
+            for expected_ratio in e {
+                assert!(a.1.contains(expected_ratio));
+            }
         }
     }
 }

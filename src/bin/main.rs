@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use simulator::{AsSelectionStrategy, Report, SimBuilder};
+use simulator::{AsSelectionStrategy, PacketDropStrategy, Report, SimBuilder};
 
 #[derive(clap::Parser)]
 #[command(name = "simulator", version, about)]
@@ -33,8 +33,12 @@ struct Cli {
     #[arg(long = "num-as", short = 'n', default_value_t = 5)]
     num_adv_as: usize,
     /// AS selection strategy. 0 for number of nodes and 1 for number of channels
-    #[arg(long = "strategy", short = 's')]
-    strategy: usize,
+    #[arg(long = "as-strategy", short = 's', default_value_t = 1)]
+    as_sel_strategy: usize,
+    /// 1 to simulate probabilistic censorship, i.e., an AS decising whether or not to forward a
+    ///   payment based on its likely destination or 0 to drop all packets
+    #[arg(long = "drop-strategy", short = 'd', default_value_t = 1)]
+    drop_strategy: usize,
     verbose: bool,
 }
 
@@ -68,7 +72,7 @@ fn main() {
     } else {
         vec![100, 1000, 10000, 100000, 1000000, 10000000]
     };
-    let as_selection_strategy = match args.strategy {
+    let as_selection_strategy = match args.as_sel_strategy {
         0 => AsSelectionStrategy::MaxNodes,
         1 => AsSelectionStrategy::MaxChannels,
         _ => {
@@ -79,8 +83,20 @@ fn main() {
             AsSelectionStrategy::MaxNodes
         }
     };
+    let dropping_strategy = match args.drop_strategy {
+        0 => PacketDropStrategy::All,
+        1 => PacketDropStrategy::IntraProbability,
+        _ => {
+            warn!(
+                "Invalid PacketDropStrategy. Defaulting to {:?}",
+                PacketDropStrategy::All
+            );
+            PacketDropStrategy::All
+        }
+    };
     let mut sim_report = Report(args.run, vec![]);
     let results = Arc::new(Mutex::new(Vec::with_capacity(amounts.len())));
+    let pairs = simlib::Simulation::draw_n_pairs_for_simulation(&graph, args.num_pairs);
     amounts.par_iter().for_each(|amount| {
         info!("Starting simulation for {amount} sat.");
         let msat = simlib::to_millisatoshi(*amount);
@@ -91,8 +107,9 @@ fn main() {
             args.num_pairs,
             args.num_adv_as,
             as_selection_strategy,
+            dropping_strategy,
         );
-        let sim_output = builder.simulate();
+        let sim_output = builder.simulate(pairs.clone());
         results.lock().unwrap().push(sim_output);
         info!("Completed simulation for {amount} sat.");
     });

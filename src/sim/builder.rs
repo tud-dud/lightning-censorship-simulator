@@ -82,8 +82,8 @@ impl SimBuilder {
 mod tests {
     use super::*;
     use network_parser::GraphSource::*;
-    use simlib::graph::Graph;
-    use std::path::Path;
+    use simlib::{graph::Graph, CandidatePath};
+    use std::{collections::VecDeque, path::Path};
 
     #[test]
     fn init() {
@@ -150,5 +150,38 @@ mod tests {
         let actual = sim_builder.get_adverserial_asns(&AsIpMap::new(&graph, true));
         let expected = vec![(24940, vec!["bob".to_owned(), "alice".to_owned()])];
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn involved_adversaries() {
+        let asn_nodes = vec!["alice".to_owned()];
+        let mut path = simlib::Path::new(String::from("dina"), String::from("bob"));
+        path.hops = VecDeque::from([
+            ("dina".to_string(), 0, 0, "".to_string()),
+            ("chan".to_string(), 0, 0, "c".to_string()),
+            ("bob".to_string(), 0, 0, "".to_string()),
+        ]);
+        let mut payment = Payment::new(0, String::from("dina"), String::from("bob"), 1, None);
+        payment.used_paths = vec![CandidatePath::new_with_path(path)];
+        let actual = SimBuilder::payment_involves_asn(&payment, &asn_nodes);
+        assert!(!actual);
+        let mut path = simlib::Path::new(String::from("dina"), String::from("bob"));
+        path.hops = VecDeque::from([
+            ("dina".to_string(), 0, 0, "".to_string()),
+            ("chan".to_string(), 0, 0, "c".to_string()),
+            ("alice".to_string(), 0, 0, "c".to_string()),
+            ("bob".to_string(), 0, 0, "".to_string()),
+        ]);
+        payment.used_paths.push(CandidatePath::new_with_path(path));
+        let actual = SimBuilder::payment_involves_asn(&payment, &asn_nodes);
+        assert!(actual);
+        let mut path = simlib::Path::new(String::from("dina"), String::from("alice"));
+        path.hops = VecDeque::from([
+            ("dina".to_string(), 0, 0, "".to_string()),
+            ("alice".to_string(), 0, 0, "c".to_string()),
+        ]);
+        payment.used_paths = vec![CandidatePath::new_with_path(path)];
+        let actual = SimBuilder::payment_involves_asn(&payment, &asn_nodes);
+        assert!(actual);
     }
 }

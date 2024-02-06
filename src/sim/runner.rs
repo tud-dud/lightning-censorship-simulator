@@ -112,6 +112,7 @@ impl SimBuilder {
         let mut updated_results = simlib::SimResult {
             num_failed: 0,
             num_succesful: 0,
+            total_num: sim_result.total_num,
             successful_payments: vec![],
             failed_payments: vec![],
             ..Default::default()
@@ -124,6 +125,7 @@ impl SimBuilder {
                 if Self::payment_involves_asn(&p, asn_nodes) {
                     if let Some(prob) = ratios.choose(&mut rng) {
                         let payment_fate = rng.gen_bool(*prob as f64);
+                        //println!("payment {:?}, fate {}", p, payment_fate);
                         if payment_fate {
                             // dropped
                             p.succeeded = false;
@@ -149,7 +151,6 @@ impl SimBuilder {
                 // it failed anyway so doesn't matter
                 updated_results.num_failed += 1;
                 p.succeeded = false;
-                p.used_paths = vec![];
                 updated_results.failed_payments.push(p);
             }
         }
@@ -162,8 +163,8 @@ mod tests {
     use super::*;
     use crate::AsSelectionStrategy;
     use network_parser::GraphSource::*;
-    use simlib::graph::Graph;
-    use std::path::Path;
+    use simlib::{graph::Graph, payment::Payment, CandidatePath};
+    use std::{collections::VecDeque, path::Path};
 
     #[test]
     fn simulation() {
@@ -216,5 +217,76 @@ mod tests {
         for i in 0..actual.attack_results.len() {
             assert_eq!(actual.attack_results[i].asn, expected.attack_results[i].asn);
         }
+    }
+
+    #[test]
+    fn apply_prob_drop() {
+        let ratios = vec![1.0];
+        let asn_nodes = vec!["alice".to_owned()];
+        let mut successful_payment =
+            Payment::new(0, String::from("dina"), String::from("bob"), 1, None);
+        let mut path = simlib::Path::new(String::from("dina"), String::from("bob"));
+        path.hops = VecDeque::from([
+            ("dina".to_string(), 0, 0, "".to_string()),
+            ("chan".to_string(), 0, 0, "c".to_string()),
+            ("bob".to_string(), 0, 0, "".to_string()),
+        ]);
+        successful_payment.succeeded = true;
+        successful_payment.used_paths = vec![CandidatePath::new_with_path(path)];
+        let sim_result = simlib::SimResult {
+            num_succesful: 2,
+            num_failed: 1,
+            total_num: 3,
+            successful_payments: vec![successful_payment.clone(), successful_payment],
+            failed_payments: vec![Payment::new(
+                1,
+                String::from("chan"),
+                String::from("bob"),
+                1,
+                None,
+            )],
+            ..Default::default()
+        };
+        let actual = SimBuilder::apply_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        assert_eq!(actual.total_num, sim_result.total_num);
+        assert_eq!(actual.total_num, actual.num_succesful + actual.num_failed);
+        assert_eq!(actual.num_succesful, actual.successful_payments.len());
+        assert_eq!(actual.num_failed, actual.failed_payments.len());
+        assert_eq!(actual.num_failed, sim_result.num_failed);
+
+        let mut successful_payment =
+            Payment::new(0, String::from("dina"), String::from("alice"), 1, None);
+        successful_payment.succeeded = true;
+        let mut path = simlib::Path::new(String::from("dina"), String::from("alice"));
+        path.hops = VecDeque::from([
+            ("dina".to_string(), 0, 0, "".to_string()),
+            ("chan".to_string(), 0, 0, "c".to_string()),
+            ("alice".to_string(), 0, 0, "".to_string()),
+        ]);
+        successful_payment.used_paths = vec![CandidatePath::new_with_path(path)];
+        let sim_result = simlib::SimResult {
+            num_succesful: 2,
+            num_failed: 1,
+            total_num: 3,
+            successful_payments: vec![successful_payment.clone(), successful_payment],
+            failed_payments: vec![Payment::new(
+                1,
+                String::from("dina"),
+                String::from("bob"),
+                1,
+                None,
+            )],
+            ..Default::default()
+        };
+        let actual = SimBuilder::apply_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        assert_eq!(actual.total_num, sim_result.total_num);
+        assert_eq!(actual.total_num, actual.num_succesful + actual.num_failed);
+        assert!(actual.num_failed > sim_result.num_failed);
+        assert_eq!(actual.num_failed, actual.failed_payments.len());
+        let ratios = vec![0.0]; // no additional failures
+        let actual = SimBuilder::apply_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        assert_eq!(actual.total_num, sim_result.total_num);
+        assert_eq!(actual.total_num, actual.num_succesful + actual.num_failed);
+        assert_eq!(actual.num_failed, sim_result.num_failed);
     }
 }

@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::net::Asn;
+use crate::PacketDropStrategy;
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,21 +18,27 @@ pub struct Report(pub u64, pub Vec<SimOutput>);
 pub struct SimOutput {
     pub amt_sat: usize,
     pub total_num_payments: usize,
+    pub per_strategy_results: Vec<PerStrategyResults>,
+}
+
+#[derive(Debug, Default, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerStrategyResults {
+    pub strategy: PacketDropStrategy,
     /// Includes baseline results when no nodes are under attack
     pub attack_results: Vec<AttackSim>,
 }
-
 #[derive(Debug, Default, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttackSim {
-    pub asn: Asn,
+    pub asn: String,
     pub sim_results: Vec<SimResult>,
 }
 
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SimResult {
-    /// Number of nodes under attack
+    /// Number of nodes under attack which we only use for the baseline
     pub num_nodes_under_attack: usize,
     /// Successful payments
     pub num_successful: usize,
@@ -64,7 +70,7 @@ impl Report {
     }
 }
 impl SimResult {
-    pub(crate) fn from_simlib_results(sim_results: simlib::SimResult, num_nodes: usize) -> Self {
+    pub fn from_simlib_results(sim_results: simlib::SimResult, num_nodes: usize) -> Self {
         let mut payments: Vec<PaymentInfo> = sim_results
             .successful_payments
             .iter()
@@ -86,4 +92,55 @@ impl SimResult {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use simlib::{payment::Payment, CandidatePath};
+    use std::collections::VecDeque;
+
+    #[test]
+    fn convert_simulation_results() {
+        let mut successful_payment =
+            Payment::new(0, String::from("dina"), String::from("bob"), 1, None);
+        let mut path = simlib::Path::new(String::from("dina"), String::from("bob"));
+        path.hops = VecDeque::from([
+            ("dina".to_string(), 0, 0, "".to_string()),
+            ("chan".to_string(), 0, 0, "c".to_string()),
+            ("bob".to_string(), 0, 0, "".to_string()),
+        ]);
+        successful_payment.succeeded = true;
+        successful_payment.used_paths = vec![CandidatePath::new_with_path(path)];
+        let sim_result = simlib::SimResult {
+            num_succesful: 2,
+            num_failed: 1,
+            total_num: 3,
+            successful_payments: vec![successful_payment.clone(), successful_payment],
+            failed_payments: vec![Payment::new(
+                1,
+                String::from("chan"),
+                String::from("bob"),
+                1,
+                None,
+            )],
+            ..Default::default()
+        };
+        let actual = SimResult::from_simlib_results(sim_result.clone(), 0);
+        let mut payments: Vec<PaymentInfo> = sim_result
+            .successful_payments
+            .iter()
+            .map(PaymentInfo::from_payment)
+            .collect();
+        payments.extend(
+            sim_result
+                .failed_payments
+                .iter()
+                .map(PaymentInfo::from_payment),
+        );
+        let expected = SimResult {
+            num_nodes_under_attack: 0,
+            num_successful: 2,
+            num_failed: 1,
+            payments,
+        };
+        assert_eq!(actual, expected);
+    }
+}

@@ -2,11 +2,15 @@ use clap::Parser;
 use log::{error, info, warn, LevelFilter};
 use rayon::prelude::*;
 use std::{
+    collections::HashMap,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
 
-use simulator::{AsSelectionStrategy, PacketDropStrategy, Report, SimBuilder};
+use simulator::{
+    AsIpMap, AsSelectionStrategy, PacketDropStrategy, PerStrategyResults, Report, SimBuilder,
+    SimOutput, SimResult,
+};
 
 #[derive(clap::Parser)]
 #[command(name = "simulator", version, about)]
@@ -35,10 +39,6 @@ struct Cli {
     /// AS selection strategy. 0 for number of nodes and 1 for number of channels
     #[arg(long = "as-strategy", short = 's', default_value_t = 1)]
     as_sel_strategy: usize,
-    /// 1 to simulate probabilistic censorship, i.e., an AS decising whether or not to forward a
-    ///   payment based on its likely destination or 0 to drop all packets
-    #[arg(long = "drop-strategy", short = 'd', default_value_t = 1)]
-    drop_strategy: usize,
     verbose: bool,
 }
 
@@ -83,18 +83,6 @@ fn main() {
             AsSelectionStrategy::MaxNodes
         }
     };
-    let dropping_strategy = match args.drop_strategy {
-        0 => PacketDropStrategy::All,
-        1 => PacketDropStrategy::IntraProbability,
-        _ => {
-            warn!(
-                "Invalid PacketDropStrategy. Defaulting to {:?}",
-                PacketDropStrategy::All
-            );
-            PacketDropStrategy::All
-        }
-    };
-    let mut sim_report = Report(args.run, vec![]);
     let results = Arc::new(Mutex::new(Vec::with_capacity(amounts.len())));
     let pairs = simlib::Simulation::draw_n_pairs_for_simulation(&graph, args.num_pairs);
     amounts.par_iter().for_each(|amount| {
@@ -104,19 +92,103 @@ fn main() {
             args.run,
             &graph,
             msat,
-            args.num_pairs,
             args.num_adv_as,
             as_selection_strategy,
-            dropping_strategy,
         );
-        let sim_output = builder.simulate(pairs.clone());
+        let baseline = builder.simulate(pairs.clone());
+        let per_strategy_results = asn_simulation(&builder, baseline);
+        let sim_output = SimOutput {
+            amt_sat: *amount,
+            total_num_payments: args.num_pairs,
+            per_strategy_results,
+        };
         results.lock().unwrap().push(sim_output);
         info!("Completed simulation for {amount} sat.");
     });
-    if let Ok(s) = results.lock() {
-        sim_report.1 = s.clone();
-    }
+    let sim_report = if let Ok(s) = results.lock() {
+        Report(args.run, s.clone())
+    } else {
+        Report(args.run, vec![])
+    };
+
     sim_report
         .write_to_file(output_dir)
         .expect("Failed to write report to file.");
+}
+
+/// Returns the simulation results for each packet drop strategy
+fn asn_simulation(
+    sim_builder: &SimBuilder,
+    baseline_result: simlib::SimResult,
+) -> Vec<PerStrategyResults> {
+    let mut per_strategy_results = vec![];
+    let as_ip_map = AsIpMap::new(&sim_builder.graph, false);
+    let attack_asns = sim_builder.get_adverserial_asns(&as_ip_map);
+    let drop_strategies = vec![
+        PacketDropStrategy::All,
+        PacketDropStrategy::IntraProbability,
+    ];
+    for strategy in drop_strategies {
+        let mut attack_results = vec![];
+        let intra_as_channel_ratios = if strategy == PacketDropStrategy::IntraProbability {
+            as_ip_map.get_intra_as_channels_ratio(&sim_builder.graph)
+        } else {
+            HashMap::default()
+        };
+        for (asn, nodes) in attack_asns.iter() {
+            let mut attack_sim = SimBuilder::per_asn_simulation(
+                baseline_result.clone(),
+                *asn,
+                nodes,
+                strategy,
+                intra_as_channel_ratios.get(asn),
+            );
+            // add the baseline results
+            attack_sim.sim_results.insert(
+                0,
+                SimResult::from_simlib_results(baseline_result.clone(), 0),
+            );
+            attack_results.push(attack_sim);
+        }
+        per_strategy_results.push(PerStrategyResults {
+            strategy,
+            attack_results,
+        })
+    }
+    per_strategy_results
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use network_parser::GraphSource::*;
+    use simlib::graph::Graph;
+    use std::path::Path;
+
+    #[test]
+    fn baseline_to_as_results() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/trivial_connected_lnd.json"),
+                Lnd,
+            )
+            .unwrap(),
+            Lnd,
+        );
+        let amt_msat = 1000;
+        let num_adv_as = 1;
+        let run = 0;
+        let num_pairs = 3;
+        let mut sim_builder = SimBuilder::new(
+            run,
+            &graph,
+            amt_msat,
+            num_adv_as,
+            AsSelectionStrategy::MaxNodes,
+        );
+        let pairs = simlib::Simulation::draw_n_pairs_for_simulation(&graph, num_pairs);
+        let baseline_result = sim_builder.simulate(pairs);
+        let actual = asn_simulation(&sim_builder, baseline_result);
+        assert_eq!(actual.len(), 2);
+    }
 }

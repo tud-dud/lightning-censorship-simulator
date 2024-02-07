@@ -1,6 +1,6 @@
 use crate::{
     net::{AsIpMap, Asn},
-    AsSelectionStrategy, PacketDropStrategy,
+    AsSelectionStrategy,
 };
 #[cfg(not(test))]
 use log::info;
@@ -10,15 +10,12 @@ use std::println as info;
 
 pub struct SimBuilder {
     pub(crate) run: u64,
-    pub(crate) graph: Graph,
+    pub graph: Graph,
     /// Amount to simulate in milli satoshis
     pub(crate) amt_msat: usize,
-    /// The number of payments to simulate
-    pub(crate) num_payments: usize,
     /// The top-n adversarial ASs
     pub(crate) num_adv_as: usize,
     pub(crate) as_selection: AsSelectionStrategy,
-    pub(crate) drop_strategy: PacketDropStrategy,
 }
 
 impl SimBuilder {
@@ -26,23 +23,19 @@ impl SimBuilder {
         run: u64,
         graph: &Graph,
         amt_msat: usize,
-        num_payments: usize,
         num_adv_as: usize,
         as_selection: AsSelectionStrategy,
-        drop_strategy: PacketDropStrategy,
     ) -> Self {
         Self {
             run,
             graph: graph.clone(),
             amt_msat,
-            num_payments,
             num_adv_as,
             as_selection,
-            drop_strategy,
         }
     }
 
-    pub(super) fn get_adverserial_asns(&self, as_ip_map: &AsIpMap) -> Vec<(Asn, Vec<ID>)> {
+    pub fn get_adverserial_asns(&self, as_ip_map: &AsIpMap) -> Vec<(Asn, Vec<ID>)> {
         let nodes = self.graph.get_nodes();
         let nodes_wo_address = nodes
             .iter()
@@ -96,29 +89,23 @@ mod tests {
             Lnd,
         );
         let amt_msat = 1000;
-        let num_pairs = 3;
         let num_adv_as = 1;
         let run = 0;
         let actual = SimBuilder::new(
             run,
             &graph,
             amt_msat,
-            num_pairs,
             num_adv_as,
             AsSelectionStrategy::MaxChannels,
-            PacketDropStrategy::All,
         );
         let expected = SimBuilder {
             run,
             graph: graph.clone(),
             amt_msat: 1000,
-            num_payments: 3,
             num_adv_as: 1,
             as_selection: AsSelectionStrategy::MaxChannels,
-            drop_strategy: PacketDropStrategy::All,
         };
         assert_eq!(actual.graph.node_count(), expected.graph.node_count());
-        assert_eq!(actual.num_payments, expected.num_payments);
         assert_eq!(actual.amt_msat, expected.amt_msat);
         assert_eq!(actual.num_adv_as, expected.num_adv_as);
         assert_eq!(actual.as_selection, expected.as_selection);
@@ -135,17 +122,14 @@ mod tests {
             Lnresearch,
         );
         let amt_msat = 1000;
-        let num_pairs = 3;
         let num_adv_as = 1;
         let run = 0;
         let sim_builder = SimBuilder::new(
             run,
             &graph,
             amt_msat,
-            num_pairs,
             num_adv_as,
             AsSelectionStrategy::MaxNodes,
-            PacketDropStrategy::All,
         );
         let actual = sim_builder.get_adverserial_asns(&AsIpMap::new(&graph, true));
         let expected = vec![(24940, vec!["bob".to_owned(), "alice".to_owned()])];

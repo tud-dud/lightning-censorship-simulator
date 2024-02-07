@@ -1,8 +1,5 @@
 use super::{output::*, SimBuilder};
-use crate::{
-    net::{AsIpMap, Asn},
-    PacketDropStrategy,
-};
+use crate::{net::Asn, PacketDropStrategy};
 #[cfg(not(test))]
 use log::info;
 use rand::{seq::SliceRandom, thread_rng, Rng};
@@ -13,14 +10,7 @@ use std::println as info;
 impl SimBuilder {
     /// Simulate payments with different ASs attacking up to 5 nodes and return a SimOutput
     /// aggregating the outcome
-    pub fn simulate(&mut self, pairs: impl Iterator<Item = (ID, ID)> + Clone) -> SimOutput {
-        let as_ip_map = AsIpMap::new(&self.graph, false);
-        let attack_asns = self.get_adverserial_asns(&as_ip_map);
-        let mut sim_output = SimOutput {
-            total_num_payments: self.num_payments,
-            amt_sat: simlib::to_sat(self.amt_msat),
-            attack_results: Vec::with_capacity(attack_asns.len() + 1),
-        };
+    pub fn simulate(&mut self, pairs: impl Iterator<Item = (ID, ID)> + Clone) -> simlib::SimResult {
         let mut baseline_sim = Simulation::new(
             self.run,
             self.graph.clone(),
@@ -30,31 +20,14 @@ impl SimBuilder {
             Some(vec![0]),
             &[],
         );
-        let intra_as_channel_ratios = as_ip_map.get_intra_as_channels_ratio(&self.graph);
-        let baseline_result = baseline_sim.run(pairs.clone(), None, false);
-        for (asn, nodes) in attack_asns.iter() {
-            let mut attack_sim = self.per_asn_simulation(
-                pairs.clone(),
-                *asn,
-                nodes,
-                self.run,
-                intra_as_channel_ratios.get(asn),
-            );
-            attack_sim.sim_results.insert(
-                0,
-                SimResult::from_simlib_results(baseline_result.clone(), 0),
-            );
-            sim_output.attack_results.push(attack_sim);
-        }
-        sim_output
+        baseline_sim.run(pairs.clone(), None, false)
     }
 
-    fn per_asn_simulation(
-        &self,
-        pairs: impl Iterator<Item = (ID, ID)> + Clone,
+    pub fn per_asn_simulation(
+        baseline_result: simlib::SimResult,
         asn: Asn,
         nodes: &[ID],
-        run: u64,
+        strategy: PacketDropStrategy,
         ratios: Option<&Vec<f32>>,
     ) -> AttackSim {
         let max_nodes_under_attack = nodes.len();
@@ -63,41 +36,30 @@ impl SimBuilder {
             max_nodes_under_attack, asn
         );
         let mut summary = AttackSim {
-            asn,
+            asn: asn.to_string(),
             ..Default::default()
         };
         let mut sim_results = vec![];
-        let mut sim = Simulation::new(
-            run,
-            self.graph.clone(),
-            self.amt_msat,
-            RoutingMetric::MinFee,
-            PaymentParts::Split,
-            Some(vec![0]),
-            &[],
-        );
-        let sim_result = sim.run(pairs.to_owned(), None, false);
-        let (updated_results, num_nodes) =
-            if self.drop_strategy == PacketDropStrategy::IntraProbability {
-                if let Some(ratios) = ratios {
-                    (
-                        Self::apply_prob_drop_strategy(sim_result, ratios, nodes),
-                        usize::MAX,
-                    )
-                } else {
-                    (sim_result, nodes.len())
-                }
-            } else {
+        let (updated_results, num_nodes) = if strategy == PacketDropStrategy::IntraProbability {
+            if let Some(ratios) = ratios {
                 (
-                    Self::apply_all_dropped_strategy(sim_result, nodes),
-                    nodes.len(),
+                    Self::apply_prob_drop_strategy(baseline_result, ratios, nodes),
+                    usize::MAX,
                 )
-            };
+            } else {
+                (baseline_result, nodes.len())
+            }
+        } else {
+            (
+                Self::apply_all_dropped_strategy(baseline_result, nodes),
+                nodes.len(),
+            )
+        };
         sim_results.push(SimResult::from_simlib_results(updated_results, num_nodes));
         summary.sim_results = sim_results;
         info!(
             "Completed simulation of {:?} attack by AS {}.",
-            self.drop_strategy, asn
+            strategy, asn
         );
         summary
     }
@@ -185,7 +147,7 @@ mod tests {
     use std::{collections::VecDeque, path::Path};
 
     #[test]
-    fn simulation() {
+    fn baseline_simulation() {
         let graph = Graph::to_sim_graph(
             &network_parser::Graph::from_json_file(
                 &Path::new("test_data/trivial_connected_lnd.json"),
@@ -202,39 +164,14 @@ mod tests {
             run,
             &graph,
             amt_msat,
-            num_pairs,
             num_adv_as,
             AsSelectionStrategy::MaxNodes,
-            PacketDropStrategy::All,
         );
         let pairs = simlib::Simulation::draw_n_pairs_for_simulation(&graph, num_pairs);
         let actual = builder.simulate(pairs);
-        let expected = SimOutput {
-            amt_sat: 1000,
-            total_num_payments: num_pairs,
-            attack_results: vec![AttackSim {
-                asn: 24940,
-                sim_results: vec![
-                    SimResult {
-                        num_nodes_under_attack: 0,
-                        num_failed: 0,
-                        num_successful: 3,
-                        payments: vec![],
-                    },
-                    SimResult {
-                        num_nodes_under_attack: 1,
-                        num_failed: 3,
-                        num_successful: 0,
-                        payments: vec![],
-                    },
-                ],
-            }],
-        };
-        assert_eq!(actual.amt_sat, expected.amt_sat);
-        assert_eq!(actual.attack_results.len(), expected.attack_results.len());
-        for i in 0..actual.attack_results.len() {
-            assert_eq!(actual.attack_results[i].asn, expected.attack_results[i].asn);
-        }
+        assert_eq!(actual.run, run);
+        assert_eq!(actual.total_num, num_pairs);
+        assert_eq!(actual.num_failed + actual.num_succesful, num_pairs);
     }
 
     #[test]

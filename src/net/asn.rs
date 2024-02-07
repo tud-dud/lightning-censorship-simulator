@@ -1,3 +1,5 @@
+use crate::TOR_ASN;
+
 use super::{Asn, DbReader};
 
 use simlib::{graph::Graph, Node, ID};
@@ -102,7 +104,7 @@ impl AsIpMap {
                 }
             } else if include_tor {
                 if node.addresses.len() == 1 {
-                    return Some(0);
+                    return Some(TOR_ASN);
                 }
             } else {
                 trace!("Skipping onion address.");

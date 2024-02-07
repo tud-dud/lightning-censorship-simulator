@@ -3,4 +3,4 @@ mod output;
 mod runner;
 
 pub use builder::*;
-pub use output::Report;
+pub use output::*;

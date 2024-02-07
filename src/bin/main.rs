@@ -142,6 +142,7 @@ fn asn_simulation(
                 nodes,
                 strategy,
                 intra_as_channel_ratios.get(asn),
+                &as_ip_map,
             );
             // add the baseline results
             attack_sim.sim_results.insert(

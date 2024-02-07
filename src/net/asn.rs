@@ -115,15 +115,6 @@ impl AsIpMap {
 
     pub fn get_intra_as_channels_ratio(&self, graph: &Graph) -> HashMap<u32, Vec<f32>> {
         let mut per_node_ratio = HashMap::new();
-        let find_key_for_value = |map: &HashMap<u32, Vec<_>>, value: &String| -> Option<u32> {
-            map.iter().find_map(|(key, val)| {
-                if val.contains(value) {
-                    Some(*key)
-                } else {
-                    None
-                }
-            })
-        };
 
         for (asn, nodes) in self.as_to_nodes.iter() {
             per_node_ratio.insert(*asn, vec![]);
@@ -136,7 +127,8 @@ impl AsIpMap {
                     }
                     let mut same_asn = 0;
                     for e in edges.iter() {
-                        if let Some(dst_asn) = find_key_for_value(&self.as_to_nodes, &e.destination)
+                        if let Some(dst_asn) =
+                            crate::find_key_for_value(&self.as_to_nodes, &e.destination)
                         {
                             if dst_asn == *asn {
                                 same_asn += 1;

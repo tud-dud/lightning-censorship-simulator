@@ -32,7 +32,10 @@ pub struct PerStrategyResults {
 #[serde(rename_all = "camelCase")]
 pub struct AttackSim {
     pub asn: String,
-    pub sim_results: Vec<SimResult>,
+    pub sim_results: Vec<SimResult>, // the first list is for the baseline
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub per_sim_accuracy: Option<Vec<PerSimAccuracy>>, // not present in baseline or when all are
+                                     // dropped
 }
 
 #[derive(Debug, Default, Clone, Serialize, PartialEq)]
@@ -44,6 +47,15 @@ pub struct SimResult {
     pub num_successful: usize,
     pub num_failed: usize,
     pub payments: Vec<PaymentInfo>,
+}
+
+/// Number of correctly and falsely identified intra-AS payments for PacketDropStrategy::Intra
+#[derive(Debug, Default, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PerSimAccuracy {
+    pub tpos: usize,
+    pub fpos: usize,
+    pub fneg: usize,
 }
 
 impl Report {

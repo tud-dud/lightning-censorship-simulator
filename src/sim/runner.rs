@@ -86,7 +86,7 @@ impl SimBuilder {
         if self.drop_strategy == PacketDropStrategy::IntraProbability {
             let (updated_results, num_nodes) = if let Some(ratios) = ratios {
                 (
-                    Self::apply_drop_strategy(sim_result, ratios, nodes),
+                    Self::apply_prob_drop_strategy(sim_result, ratios, nodes),
                     usize::MAX,
                 )
             } else {
@@ -104,54 +104,45 @@ impl SimBuilder {
     }
 
     /// Uniformly select a ratio then generate a Boolean outcome for that
-    fn apply_drop_strategy(
+    fn apply_prob_drop_strategy(
         sim_result: simlib::SimResult,
         ratios: &Vec<f32>,
         asn_nodes: &[ID],
     ) -> simlib::SimResult {
         let mut updated_results = simlib::SimResult {
-            num_failed: 0,
+            num_failed: sim_result.num_failed,
             num_succesful: 0,
             total_num: sim_result.total_num,
             successful_payments: vec![],
-            failed_payments: vec![],
+            failed_payments: sim_result.failed_payments,
             ..Default::default()
         };
-        let mut all_payments = sim_result.successful_payments;
-        all_payments.extend(sim_result.failed_payments);
         let mut rng = thread_rng();
-        for mut p in all_payments {
-            if p.succeeded {
-                if Self::payment_involves_asn(&p, asn_nodes) {
-                    if let Some(prob) = ratios.choose(&mut rng) {
-                        let payment_fate = rng.gen_bool(*prob as f64);
-                        //println!("payment {:?}, fate {}", p, payment_fate);
-                        if payment_fate {
-                            // dropped
-                            p.succeeded = false;
-                            p.used_paths = vec![];
-                            updated_results.num_failed += 1;
-                            updated_results.failed_payments.push(p);
-                        } else {
-                            // succeeded
-                            updated_results.num_succesful += 1;
-                            updated_results.successful_payments.push(p);
-                        }
+        for mut p in sim_result.successful_payments {
+            if Self::payment_involves_asn(&p, asn_nodes) {
+                if let Some(prob) = ratios.choose(&mut rng) {
+                    let payment_fate = rng.gen_bool(*prob as f64);
+                    //println!("payment {:?}, fate {}", p, payment_fate);
+                    if payment_fate {
+                        // dropped
+                        p.succeeded = false;
+                        p.used_paths = vec![];
+                        updated_results.num_failed += 1;
+                        updated_results.failed_payments.push(p);
                     } else {
-                        // weird case but lets leave the payment as is
+                        // succeeded
                         updated_results.num_succesful += 1;
                         updated_results.successful_payments.push(p);
                     }
                 } else {
-                    // no choice to make here
+                    // weird case but lets leave the payment as is
                     updated_results.num_succesful += 1;
                     updated_results.successful_payments.push(p);
                 }
             } else {
-                // it failed anyway so doesn't matter
-                updated_results.num_failed += 1;
-                p.succeeded = false;
-                updated_results.failed_payments.push(p);
+                // no choice to make here
+                updated_results.num_succesful += 1;
+                updated_results.successful_payments.push(p);
             }
         }
         updated_results
@@ -247,7 +238,7 @@ mod tests {
             )],
             ..Default::default()
         };
-        let actual = SimBuilder::apply_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        let actual = SimBuilder::apply_prob_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
         assert_eq!(actual.total_num, sim_result.total_num);
         assert_eq!(actual.total_num, actual.num_succesful + actual.num_failed);
         assert_eq!(actual.num_succesful, actual.successful_payments.len());
@@ -278,13 +269,13 @@ mod tests {
             )],
             ..Default::default()
         };
-        let actual = SimBuilder::apply_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        let actual = SimBuilder::apply_prob_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
         assert_eq!(actual.total_num, sim_result.total_num);
         assert_eq!(actual.total_num, actual.num_succesful + actual.num_failed);
         assert!(actual.num_failed > sim_result.num_failed);
         assert_eq!(actual.num_failed, actual.failed_payments.len());
         let ratios = vec![0.0]; // no additional failures
-        let actual = SimBuilder::apply_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        let actual = SimBuilder::apply_prob_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
         assert_eq!(actual.total_num, sim_result.total_num);
         assert_eq!(actual.total_num, actual.num_succesful + actual.num_failed);
         assert_eq!(actual.num_failed, sim_result.num_failed);

@@ -75,7 +75,7 @@ impl SimBuilder {
         asn_nodes: &[ID],
         asn: u32,
         as_ip_map: &AsIpMap,
-    ) -> (simlib::SimResult, Option<Vec<PerSimAccuracy>>) {
+    ) -> (simlib::SimResult, Option<PerSimAccuracy>) {
         let mut updated_results = simlib::SimResult {
             num_failed: sim_result.num_failed,
             num_succesful: 0,
@@ -84,10 +84,9 @@ impl SimBuilder {
             failed_payments: sim_result.failed_payments,
             ..Default::default()
         };
-        let mut per_sim_accuracy = vec![];
+        let (mut tpos, mut fpos, mut fneg) = (0, 0, 0);
         let mut rng = thread_rng();
         for mut p in sim_result.successful_payments {
-            let (mut tpos, mut fpos, mut fneg) = (0, 0, 0);
             let dest_asn =
                 crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.dest).unwrap_or_default();
             if Self::payment_involves_asn(&p, asn_nodes) {
@@ -123,16 +122,15 @@ impl SimBuilder {
                 updated_results.num_succesful += 1;
                 updated_results.successful_payments.push(p);
             }
-            per_sim_accuracy.push(PerSimAccuracy { tpos, fpos, fneg })
         }
-        (updated_results, Some(per_sim_accuracy))
+        (updated_results, Some(PerSimAccuracy { tpos, fpos, fneg }))
     }
 
     /// All packets involving the AS's nodes are dropped
     fn apply_all_dropped_strategy(
         sim_result: simlib::SimResult,
         asn_nodes: &[ID],
-    ) -> (simlib::SimResult, Option<Vec<PerSimAccuracy>>) {
+    ) -> (simlib::SimResult, Option<PerSimAccuracy>) {
         let mut updated_results = simlib::SimResult {
             num_failed: sim_result.num_failed,
             num_succesful: 0,
@@ -195,9 +193,21 @@ mod tests {
     }
 
     #[test]
+
     fn apply_prob_drop() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/lnbook_example_lnr.json"),
+                Lnresearch,
+            )
+            .unwrap(),
+            Lnresearch,
+        );
         let ratios = vec![1.0];
         let asn_nodes = vec!["alice".to_owned()];
+        let as_ip_map = AsIpMap::new(&graph, false);
+        let asn = 24290;
+        println!("as_ip_map {:?}", as_ip_map.as_to_nodes);
         let mut successful_payment =
             Payment::new(0, String::from("dina"), String::from("bob"), 1, None);
         let mut path = simlib::Path::new(String::from("dina"), String::from("bob"));
@@ -222,8 +232,13 @@ mod tests {
             )],
             ..Default::default()
         };
-        let (actual_sim_result, _) =
-            SimBuilder::apply_prob_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        let (actual_sim_result, _) = SimBuilder::apply_prob_drop_strategy(
+            sim_result.clone(),
+            &ratios,
+            &asn_nodes,
+            asn,
+            &as_ip_map,
+        );
         assert_eq!(actual_sim_result.total_num, sim_result.total_num);
         assert_eq!(
             actual_sim_result.total_num,
@@ -263,8 +278,13 @@ mod tests {
             )],
             ..Default::default()
         };
-        let (actual_sim_result, _) =
-            SimBuilder::apply_prob_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        let (actual_sim_result, _) = SimBuilder::apply_prob_drop_strategy(
+            sim_result.clone(),
+            &ratios,
+            &asn_nodes,
+            asn,
+            &as_ip_map,
+        );
         assert_eq!(actual_sim_result.total_num, sim_result.total_num);
         assert_eq!(
             actual_sim_result.total_num,
@@ -278,14 +298,25 @@ mod tests {
         );
 
         let ratios = vec![0.0]; // no additional failures
-        let (actual_sim_result, _) =
-            SimBuilder::apply_prob_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        let (actual_sim_result, actual_accuracy) = SimBuilder::apply_prob_drop_strategy(
+            sim_result.clone(),
+            &ratios,
+            &asn_nodes,
+            asn,
+            &as_ip_map,
+        );
         assert_eq!(actual_sim_result.total_num, sim_result.total_num);
         assert_eq!(
             actual_sim_result.total_num,
             actual_sim_result.num_succesful + actual_sim_result.num_failed
         );
         assert_eq!(actual_sim_result.num_failed, sim_result.num_failed);
+        println!("accuracy: {:?}", actual_accuracy);
+        assert!(
+            actual_accuracy.is_some_and(|PerSimAccuracy { tpos, fpos, fneg }| tpos == 0
+                && fpos == 0
+                && fneg == 0)
+        );
     }
 
     #[test]
@@ -316,7 +347,7 @@ mod tests {
             ..Default::default()
         };
         let (actual_sim_result, _) =
-            SimBuilder::apply_prob_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+            SimBuilder::apply_all_dropped_strategy(sim_result.clone(), &asn_nodes);
         assert_eq!(actual_sim_result.total_num, sim_result.total_num);
         assert_eq!(actual_sim_result.num_failed, sim_result.num_failed);
         assert_eq!(
@@ -355,8 +386,8 @@ mod tests {
             )],
             ..Default::default()
         };
-        let (actual_sim_result, _) =
-            SimBuilder::apply_prob_drop_strategy(sim_result.clone(), &ratios, &asn_nodes);
+        let (actual_sim_result, actual_accuracy) =
+            SimBuilder::apply_all_dropped_strategy(sim_result.clone(), &asn_nodes);
         assert_eq!(actual_sim_result.total_num, sim_result.total_num);
         assert_eq!(
             actual_sim_result.total_num,
@@ -368,5 +399,6 @@ mod tests {
             actual_sim_result.num_failed,
             actual_sim_result.failed_payments.len()
         );
+        assert!(actual_accuracy.is_none());
     }
 }

@@ -34,8 +34,8 @@ pub struct AttackSim {
     pub asn: String,
     pub sim_results: Vec<SimResult>, // the first list is for the baseline
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub per_sim_accuracy: Option<Vec<PerSimAccuracy>>, // not present in baseline or when all are
-                                     // dropped
+    pub per_sim_accuracy: Option<PerSimAccuracy>, // not present in baseline or when all are
+                                     // dropped so we only have one
 }
 
 #[derive(Debug, Default, Clone, Serialize, PartialEq)]

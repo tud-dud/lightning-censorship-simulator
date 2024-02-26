@@ -182,7 +182,7 @@ impl SimBuilder {
             let src_asn =
                 crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.dest).unwrap_or_default();
             let dest_asn =
-                crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.dest).unwrap_or_default();
+                crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.source).unwrap_or_default();
             if src_asn == asn || dest_asn == asn {
                 p.succeeded = false;
                 p.used_paths = vec![];
@@ -453,7 +453,7 @@ mod tests {
             Lnresearch,
         );
         let as_ip_map = AsIpMap::new(&graph, false);
-        let asn = 24290;
+        let asn = 797;
         let mut successful_payment =
             Payment::new(0, String::from("dina"), String::from("bob"), 1, None);
         let mut path = simlib::Path::new(String::from("dina"), String::from("bob"));
@@ -464,11 +464,11 @@ mod tests {
         ]);
         successful_payment.succeeded = true;
         successful_payment.used_paths = vec![CandidatePath::new_with_path(path)];
-        let sim_result = simlib::SimResult {
+        let mut sim_result = simlib::SimResult {
             num_succesful: 2,
             num_failed: 1,
             total_num: 3,
-            successful_payments: vec![successful_payment.clone(), successful_payment],
+            successful_payments: vec![successful_payment],
             failed_payments: vec![Payment::new(
                 1,
                 String::from("chan"),
@@ -478,10 +478,19 @@ mod tests {
             )],
             ..Default::default()
         };
+        // should fail
+        let successful_payment =
+            Payment::new(0, String::from("dina"), String::from("chan"), 1, None);
+        let mut path = simlib::Path::new(String::from("dina"), String::from("chan"));
+        path.hops = VecDeque::from([
+            ("dina".to_string(), 0, 0, "".to_string()),
+            ("chan".to_string(), 0, 0, "".to_string()),
+        ]);
+        sim_result.successful_payments.push(successful_payment);
         let (actual_sim_result, _) =
             SimBuilder::apply_intra_as_drop_strategy(sim_result.clone(), asn, &as_ip_map);
         assert_eq!(actual_sim_result.total_num, sim_result.total_num);
-        assert_eq!(actual_sim_result.num_failed, sim_result.num_failed);
+        assert_eq!(actual_sim_result.num_succesful, 0);
         assert_eq!(
             actual_sim_result.total_num,
             actual_sim_result.num_succesful + actual_sim_result.num_failed

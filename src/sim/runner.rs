@@ -41,22 +41,31 @@ impl SimBuilder {
             ..Default::default()
         };
         let mut sim_results = vec![];
-        let ((updated_results, per_sim_accuracy), num_nodes) = if strategy
-            == PacketDropStrategy::IntraProbability
-        {
-            if let Some(ratios) = ratios {
-                (
-                    Self::apply_prob_drop_strategy(baseline_result, ratios, nodes, asn, as_ip_map),
-                    usize::MAX,
-                )
-            } else {
-                ((baseline_result, None), nodes.len())
+        let ((updated_results, per_sim_accuracy), num_nodes) = match strategy {
+            PacketDropStrategy::IntraProbability => {
+                if let Some(ratios) = ratios {
+                    (
+                        Self::apply_prob_drop_strategy(
+                            baseline_result,
+                            ratios,
+                            nodes,
+                            asn,
+                            as_ip_map,
+                        ),
+                        usize::MAX,
+                    )
+                } else {
+                    ((baseline_result, None), nodes.len())
+                }
             }
-        } else {
-            (
+            PacketDropStrategy::All => (
                 Self::apply_all_dropped_strategy(baseline_result, nodes),
                 nodes.len(),
-            )
+            ),
+            PacketDropStrategy::IntraAs => (
+                Self::apply_intra_as_drop_strategy(baseline_result, asn, as_ip_map),
+                usize::MAX,
+            ),
         };
         sim_results.push(SimResult::from_simlib_results(updated_results, num_nodes));
         summary.sim_results = sim_results;
@@ -154,6 +163,39 @@ impl SimBuilder {
         }
         (updated_results, None)
     }
+
+    /// All packets coming from/to asn are dropped
+    fn apply_intra_as_drop_strategy(
+        sim_result: simlib::SimResult,
+        asn: u32,
+        as_ip_map: &AsIpMap,
+    ) -> (simlib::SimResult, Option<PerSimAccuracy>) {
+        let mut updated_results = simlib::SimResult {
+            num_failed: sim_result.num_failed,
+            num_succesful: 0,
+            total_num: sim_result.total_num,
+            successful_payments: vec![],
+            failed_payments: sim_result.failed_payments,
+            ..Default::default()
+        };
+        for mut p in sim_result.successful_payments {
+            let src_asn =
+                crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.dest).unwrap_or_default();
+            let dest_asn =
+                crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.dest).unwrap_or_default();
+            if src_asn == asn || dest_asn == asn {
+                p.succeeded = false;
+                p.used_paths = vec![];
+                updated_results.num_failed += 1;
+                updated_results.failed_payments.push(p);
+            } else {
+                // does not involve any AS node so leave as is
+                updated_results.num_succesful += 1;
+                updated_results.successful_payments.push(p);
+            }
+        }
+        (updated_results, None)
+    }
 }
 
 #[cfg(test)]
@@ -207,7 +249,6 @@ mod tests {
         let asn_nodes = vec!["alice".to_owned()];
         let as_ip_map = AsIpMap::new(&graph, false);
         let asn = 24290;
-        println!("as_ip_map {:?}", as_ip_map.as_to_nodes);
         let mut successful_payment =
             Payment::new(0, String::from("dina"), String::from("bob"), 1, None);
         let mut path = simlib::Path::new(String::from("dina"), String::from("bob"));
@@ -311,7 +352,6 @@ mod tests {
             actual_sim_result.num_succesful + actual_sim_result.num_failed
         );
         assert_eq!(actual_sim_result.num_failed, sim_result.num_failed);
-        println!("accuracy: {:?}", actual_accuracy);
         assert!(
             actual_accuracy.is_some_and(|PerSimAccuracy { tpos, fpos, fneg }| tpos == 0
                 && fpos == 0
@@ -400,5 +440,59 @@ mod tests {
             actual_sim_result.failed_payments.len()
         );
         assert!(actual_accuracy.is_none());
+    }
+
+    #[test]
+    fn apply_intra_as_drop() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/lnbook_example_lnr.json"),
+                Lnresearch,
+            )
+            .unwrap(),
+            Lnresearch,
+        );
+        let as_ip_map = AsIpMap::new(&graph, false);
+        let asn = 24290;
+        let mut successful_payment =
+            Payment::new(0, String::from("dina"), String::from("bob"), 1, None);
+        let mut path = simlib::Path::new(String::from("dina"), String::from("bob"));
+        path.hops = VecDeque::from([
+            ("dina".to_string(), 0, 0, "".to_string()),
+            ("chan".to_string(), 0, 0, "c".to_string()),
+            ("bob".to_string(), 0, 0, "".to_string()),
+        ]);
+        successful_payment.succeeded = true;
+        successful_payment.used_paths = vec![CandidatePath::new_with_path(path)];
+        let sim_result = simlib::SimResult {
+            num_succesful: 2,
+            num_failed: 1,
+            total_num: 3,
+            successful_payments: vec![successful_payment.clone(), successful_payment],
+            failed_payments: vec![Payment::new(
+                1,
+                String::from("chan"),
+                String::from("bob"),
+                1,
+                None,
+            )],
+            ..Default::default()
+        };
+        let (actual_sim_result, _) =
+            SimBuilder::apply_intra_as_drop_strategy(sim_result.clone(), asn, &as_ip_map);
+        assert_eq!(actual_sim_result.total_num, sim_result.total_num);
+        assert_eq!(actual_sim_result.num_failed, sim_result.num_failed);
+        assert_eq!(
+            actual_sim_result.total_num,
+            actual_sim_result.num_succesful + actual_sim_result.num_failed
+        );
+        assert_eq!(
+            actual_sim_result.num_succesful,
+            actual_sim_result.successful_payments.len()
+        );
+        assert_eq!(
+            actual_sim_result.num_failed,
+            actual_sim_result.failed_payments.len()
+        );
     }
 }

@@ -127,6 +127,7 @@ fn asn_simulation(
     let drop_strategies = vec![
         PacketDropStrategy::All,
         PacketDropStrategy::IntraProbability,
+        PacketDropStrategy::IntraAs,
     ];
     for strategy in drop_strategies {
         let mut attack_results = vec![];
@@ -190,6 +191,6 @@ mod tests {
         let pairs = simlib::Simulation::draw_n_pairs_for_simulation(&graph, num_pairs);
         let baseline_result = sim_builder.simulate(pairs);
         let actual = asn_simulation(&sim_builder, baseline_result);
-        assert_eq!(actual.len(), 2);
+        assert_eq!(actual.len(), 3);
     }
 }

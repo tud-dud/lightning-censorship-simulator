@@ -126,8 +126,8 @@ fn asn_simulation(
     let attack_asns = sim_builder.get_adverserial_asns(&as_ip_map);
     let drop_strategies = vec![
         PacketDropStrategy::All,
-        PacketDropStrategy::IntraProbability,
         PacketDropStrategy::IntraAs,
+        PacketDropStrategy::InterAs,
     ];
     for strategy in drop_strategies {
         let mut attack_results = vec![];

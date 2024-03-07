@@ -23,6 +23,9 @@ pub enum PacketDropStrategy {
     /// src or dst belong to the attacking AS. Works because we are able to ID the sender/receiver
     /// at each hop
     IntraAs,
+    /// Drop payments from/to nodes outside our AS, i.e., the simulator will fail all payments if the
+    /// src or dst do not belong to the attacking AS.
+    InterAs,
 }
 
 pub(crate) static TOR_ASN: u32 = 0;

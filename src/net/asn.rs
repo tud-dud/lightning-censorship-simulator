@@ -23,8 +23,12 @@ impl AsIpMap {
         let db_reader = DbReader::new();
         let mut as_to_nodes = HashMap::default();
         let nodes = graph.get_nodes();
-        for node in nodes {
-            if let Some(asn) = Self::lookup_asn_for_node(&db_reader, &node, include_tor) {
+        let mut num_public_addr = 0;
+        for node in &nodes {
+            if let Some(asn) = Self::lookup_asn_for_node(&db_reader, node, include_tor) {
+                if asn != TOR_ASN {
+                    num_public_addr += 1;
+                }
                 as_to_nodes
                     .entry(asn)
                     .and_modify(|m: &mut Vec<ID>| m.push(node.id.to_owned()))
@@ -34,6 +38,10 @@ impl AsIpMap {
         info!(
             "Found a total of {} ASNs in input graph.",
             as_to_nodes.len()
+        );
+        info!(
+            "{}% of nodes have a public address",
+            num_public_addr as f32 / nodes.len() as f32 * 100.0
         );
         Self { as_to_nodes }
     }

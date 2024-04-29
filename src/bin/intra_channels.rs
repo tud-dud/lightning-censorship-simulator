@@ -7,15 +7,16 @@ use std::{collections::HashMap, error::Error, path::PathBuf};
 #[derive(clap::Parser)]
 #[command(name = "intra-channels", version, about)]
 struct Cli {
-    /// Path to JSON ile describing topology
+    /// Path to JSON file describing topology
     graph_file: PathBuf,
     #[arg(long = "log", short = 'l', default_value = "info")]
     log_level: LevelFilter,
-    /// Path to directory in which the results will be stored
+    /// Path to directory where the results will be stored
     #[arg(long = "out", short = 'o')]
     output_path: Option<PathBuf>,
     #[arg(long = "graph-source", short = 'g', default_value = "lnd")]
     graph_type: network_parser::GraphSource,
+    /// Overwrite the existing file, if it exists
     #[arg(short = 'u', long = "overwrite")]
     overwrite: bool,
     verbose: bool,

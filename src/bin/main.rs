@@ -15,11 +15,11 @@ use simulator::{
 #[derive(clap::Parser)]
 #[command(name = "simulator", version, about)]
 struct Cli {
-    /// Path to JSON ile describing topology
+    /// Path to JSON file describing topology
     graph_file: PathBuf,
     #[arg(long = "log", short = 'l', default_value = "info")]
     log_level: LevelFilter,
-    /// Path to directory in which the results will be stored
+    /// Path to directory where the results will be stored
     #[arg(long = "out", short = 'o')]
     output_dir: Option<PathBuf>,
     /// The payment volume (in sat) we are trying to route

@@ -13,14 +13,13 @@ Build all members of the project:
 
 ## simulator
 
-The bianry reconstructs the network topology using an input graph, maps nodes to
+The binary reconstructs the network topology using an input graph, maps nodes to
 ASNs and implements payment delivery in the network. The tool simulates payment
-failure scenarios under different attack scenarios.
+failure under different attack scenarios.
 
   <details>
     <summary>simulator</summary>
 
-    ```
        target/release/simulator [OPTIONS] <GRAPH_FILE> [VERBOSE]
 
        Arguments:
@@ -38,5 +37,43 @@ failure scenarios under different attack scenarios.
          -s, --as-strategy <AS_SEL_STRATEGY>  AS selection strategy. 0 for number of nodes and 1 for number of channels [default: 1]
          -h, --help                           Print help
          -V, --version                        Print version 
-    ```
+  </details>
+
+## as_node_degree
+
+  <details>
+    <summary>as_node_degree</summary>
+
+        target/release/as_node_degree [OPTIONS] <GRAPH_FILE> [VERBOSE]
+
+        Arguments:
+          <GRAPH_FILE>  Path to JSON file describing topology
+          [VERBOSE]
+
+        Options:
+          -l, --log <LOG_LEVEL>            [default: info]
+          -o, --out <OUTPUT_PATH>          Path to directory where the results will be stored
+          -g, --graph-source <GRAPH_TYPE>  [default: lnd] [possible values: lnd, lnr]
+          -u, --overwrite
+          -h, --help                       Print help
+          -V, --version                    Print version
+  </details>
+
+## intra_as_channels
+
+  <details>
+    <summary>intra_as_channels</summary>
+        Usage: target/release/intra_channels [OPTIONS] <GRAPH_FILE> [VERBOSE]
+
+        Arguments:
+          <GRAPH_FILE>  Path to JSON ile describing topology
+          [VERBOSE]
+
+        Options:
+          -l, --log <LOG_LEVEL>            [default: info]
+          -o, --out <OUTPUT_PATH>          Path to directory where the results will be stored
+          -g, --graph-source <GRAPH_TYPE>  [default: lnd] [possible values: lnd, lnr]
+          -u, --overwrite
+          -h, --help                       Print help
+          -V, --version                    Print version
   </details>

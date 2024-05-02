@@ -2,23 +2,29 @@
 
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 
-A set of binaries to simulate payment delivery in the Lightning network under
-various attack scenarios or analyse the network-level topology.
+This is a set of binaries to simulate payment delivery in the Lightning network
+under various attack scenarios or analyse the network-level topology.
 
 ## Build
 
-Build all members of the project:
+Compile all members of the project:
 
 `cargo build --release`
+
+Run all unit tests:
+
+`cargo test --release`
 
 ## simulator
 
 The binary reconstructs the network topology using an input graph, maps nodes to
-ASNs and implements payment delivery in the network. The tool simulates payment
-failure under different attack scenarios.
+ASNs and uses the
+[lightning-simulator](https://github.com/cndolo/lightning-simulator) to simulate
+payment delivery in the network.
+The tool simulates payment failure under different attack scenarios.
 
   <details>
-    <summary>simulator</summary>
+    <summary>usage</summary>
 
        target/release/simulator [OPTIONS] <GRAPH_FILE> [VERBOSE]
 
@@ -41,8 +47,15 @@ failure under different attack scenarios.
 
 ## as_node_degree
 
+The binary reads the channel graph and maps each to node with a public address
+to its ASN.
+The output is a CSV file with two columns per node -- its ASN and degree (number
+of channels).
+
+*NB: Nodes with only a Tor address are assigned ASN 0.*
+
   <details>
-    <summary>as_node_degree</summary>
+    <summary>usage</summary>
 
         target/release/as_node_degree [OPTIONS] <GRAPH_FILE> [VERBOSE]
 
@@ -61,12 +74,20 @@ failure under different attack scenarios.
 
 ## intra_as_channels
 
+The binary reads the channel graph, maps each to node with a public address
+to its ASN and counts the number of channels the node has to other nodes in its
+ASN.
+The output is a CSV file with two columns per node -- its ASN and percentage of
+channels to other nodes in its ASN.
+
+*NB: Nodes with only a Tor address are assigned ASN 0.*
+
   <details>
-    <summary>intra_as_channels</summary>
+    <summary>usage</summary>
         Usage: target/release/intra_channels [OPTIONS] <GRAPH_FILE> [VERBOSE]
 
         Arguments:
-          <GRAPH_FILE>  Path to JSON ile describing topology
+          <GRAPH_FILE>  Path to JSON file describing topology
           [VERBOSE]
 
         Options:

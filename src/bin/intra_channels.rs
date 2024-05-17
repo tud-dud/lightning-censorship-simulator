@@ -11,7 +11,7 @@ struct Cli {
     graph_file: PathBuf,
     #[arg(long = "log", short = 'l', default_value = "info")]
     log_level: LevelFilter,
-    /// Path to directory where the results will be stored
+    /// Path to CSV file where the results should be written to
     #[arg(long = "out", short = 'o')]
     output_path: Option<PathBuf>,
     #[arg(long = "graph-source", short = 'g', default_value = "lnd")]
@@ -41,16 +41,16 @@ fn main() {
     let output_path = if let Some(output_path) = args.output_path {
         output_path
     } else {
-        PathBuf::from("ln-intra-channels.csv")
+        PathBuf::from("ln-intra-inter-channels.csv")
     };
     info!("Topology analysis will be written to {:#?}.", output_path);
-    let ratios = AsIpMap::new(&graph, true).get_intra_as_channels_ratio(&graph);
-    write_to_csv_file(&ratios, &output_path, args.overwrite).unwrap();
+    let sums = AsIpMap::new(&graph, true).get_sum_of_as_channels(&graph);
+    write_to_csv_file(&sums, &output_path, args.overwrite).unwrap();
     info!("CSV successfully written to {:#?}.", output_path);
 }
 
 fn write_to_csv_file(
-    data: &HashMap<u32, Vec<f32>>,
+    data: &HashMap<u32, (u32, u32)>,
     output_path: &PathBuf,
     overwrite_allowed: bool,
 ) -> Result<(), Box<dyn Error>> {
@@ -61,11 +61,9 @@ fn write_to_csv_file(
         )))
     } else {
         let mut writer = Writer::from_path(output_path)?;
-        writer.serialize(("asn", "ratio"))?;
-        for (asn, rates) in data.iter() {
-            for r in rates {
-                writer.serialize((asn, r))?;
-            }
+        writer.serialize(("asn", "intra", "inter"))?;
+        for (asn, (num_intra, num_inter)) in data.iter() {
+            writer.serialize((asn, num_intra, num_inter))?;
             writer.flush()?;
         }
         Ok(())

@@ -150,6 +150,38 @@ impl AsIpMap {
         }
         per_node_ratio
     }
+
+    /// Returns the total number of (intra, inter)-AS channels per AS
+    pub fn get_sum_of_as_channels(&self, graph: &Graph) -> HashMap<u32, (u32, u32)> {
+        let mut as_channels = HashMap::with_capacity(self.as_to_nodes.len());
+
+        for (asn, nodes) in self.as_to_nodes.iter() {
+            let mut inter = 0;
+            let mut intra = 0;
+            for node in nodes {
+                if let Some(edges) = graph.get_edges_for_node(node) {
+                    let total = edges.len();
+                    if total.eq(&0) {
+                        // shouldnt happen
+                        break;
+                    }
+                    for e in edges.iter() {
+                        if let Some(dst_asn) =
+                            crate::find_key_for_value(&self.as_to_nodes, &e.destination)
+                        {
+                            if dst_asn == *asn {
+                                intra += 1;
+                            } else {
+                                inter += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            as_channels.insert(*asn, (intra, inter));
+        }
+        as_channels
+    }
 }
 
 #[cfg(test)]
@@ -326,6 +358,43 @@ mod tests {
             for expected_ratio in e {
                 assert!(a.1.contains(expected_ratio));
             }
+        }
+    }
+
+    #[test]
+    fn num_as_channels() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/lnbook_example_lnr.json"),
+                Lnresearch,
+            )
+            .unwrap(),
+            Lnresearch,
+        );
+        let include_tor = true;
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
+        let actual = as_ip_map.get_sum_of_as_channels(&graph);
+        let expected = HashMap::from([(24940, (2, 1)), (797, (2, 1))]);
+        assert_eq!(actual.len(), expected.len());
+        for a in actual {
+            let e = expected.get(&a.0).unwrap();
+            assert_eq!(a.1, *e);
+        }
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/trivial_connected_lnd.json"),
+                Lnd,
+            )
+            .unwrap(),
+            Lnd,
+        );
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
+        let actual = as_ip_map.get_sum_of_as_channels(&graph);
+        let expected = HashMap::from([(24940, (2, 2)), (797, (0, 2))]);
+        assert_eq!(actual.len(), expected.len());
+        for a in actual {
+            let e = expected.get(&a.0).unwrap();
+            assert_eq!(a.1, *e);
         }
     }
 }

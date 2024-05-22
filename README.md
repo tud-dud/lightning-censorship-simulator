@@ -77,13 +77,14 @@ of channels).
 The binary reads the channel graph, maps each to node with a public address
 to its ASN and counts the number of channels the node has to other nodes in its
 ASN.
-The output is a CSV file with two columns per node -- its ASN and percentage of
-channels to other nodes in its ASN.
+The output is a CSV file with three columns per AS -- its ASN, the total number
+of intra-AS channels and the total number of inter-AS channels.
 
 *NB: Nodes with only a Tor address are assigned ASN 0.*
 
   <details>
     <summary>usage</summary>
+
         Usage: target/release/intra_channels [OPTIONS] <GRAPH_FILE> [VERBOSE]
 
         Arguments:
@@ -92,7 +93,7 @@ channels to other nodes in its ASN.
 
         Options:
           -l, --log <LOG_LEVEL>            [default: info]
-          -o, --out <OUTPUT_PATH>          Path to directory where the results will be stored
+          -o, --out <OUTPUT_PATH>          Path to CSV file where the results should be written to
           -g, --graph-source <GRAPH_TYPE>  [default: lnd] [possible values: lnd, lnr]
           -u, --overwrite
           -h, --help                       Print help

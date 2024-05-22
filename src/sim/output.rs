@@ -108,6 +108,7 @@ mod tests {
     use super::*;
     use simlib::{payment::Payment, CandidatePath};
     use std::collections::VecDeque;
+    use tempfile::TempDir;
 
     #[test]
     fn convert_simulation_results() {
@@ -154,5 +155,12 @@ mod tests {
             payments,
         };
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn write() {
+        let path = TempDir::new().expect("Error opening tempfile");
+        let report = Report::default();
+        assert!(report.write_to_file(PathBuf::from(path.path())).is_ok());
     }
 }

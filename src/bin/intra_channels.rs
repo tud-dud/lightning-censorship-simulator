@@ -69,3 +69,29 @@ fn write_to_csv_file(
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use csv::{Reader, StringRecord};
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn persist() {
+        let sums = HashMap::from([(0, (1, 2))]);
+        let file = NamedTempFile::new().expect("Error opening tempfile");
+        let overwrite = false;
+        assert!(write_to_csv_file(&sums, &PathBuf::from(file.path()), overwrite).is_err());
+        let overwrite = true;
+        assert!(write_to_csv_file(&sums, &PathBuf::from(file.path()), overwrite).is_ok());
+        let mut reader = Reader::from_path(file.path()).unwrap();
+        assert_eq!(
+            *reader.headers().unwrap(),
+            StringRecord::from(vec!["asn", "intra", "inter"])
+        );
+        for record in reader.records() {
+            assert_eq!(record.unwrap(), StringRecord::from(vec!["0", "1", "2"]));
+        }
+    }
+}

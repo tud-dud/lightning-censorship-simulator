@@ -73,3 +73,44 @@ fn write_to_csv_file(
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use csv::{Reader, StringRecord};
+    use std::path::Path;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn persist() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/trivial_connected_lnd.json"),
+                network_parser::GraphSource::Lnd,
+            )
+            .unwrap(),
+            network_parser::GraphSource::Lnd,
+        );
+        let data = HashMap::from([
+            (24290, vec![String::from("034"), String::from("025")]),
+            (797, vec![String::from("036")]),
+        ]);
+        let file = NamedTempFile::new().expect("Error opening tempfile");
+        let overwrite = true;
+        assert!(write_to_csv_file(&data, &PathBuf::from(file.path()), overwrite, &graph).is_ok());
+        let mut reader = Reader::from_path(file.path()).unwrap();
+        assert_eq!(
+            *reader.headers().unwrap(),
+            StringRecord::from(vec!["asn", "degree"])
+        );
+        let expected = vec![
+            StringRecord::from(vec!["24290", "2"]),
+            StringRecord::from(vec!["24290", "2"]),
+            StringRecord::from(vec!["797", "2"]),
+        ];
+        for record in reader.records() {
+            assert!(expected.contains(&record.unwrap()));
+        }
+    }
+}

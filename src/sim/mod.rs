@@ -1,4 +1,5 @@
 mod builder;
+mod censor;
 mod output;
 mod runner;
 

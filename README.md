@@ -1,6 +1,9 @@
 # simulator
 
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+[![CI](https://github.com/p2p-research-tools/lightning-censorship-simulator/actions/workflows/test.yml/badge.svg)](https://github.com/p2p-research-tools/lightning-censorship-simulator/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/p2p-research-tools/lightning-censorship-simulator/branch/main/graph/badge.svg?token=QZH345MHCJ)](https://codecov.io/gh/p2p-research-tools/lightning-censorship-simulator)
+[![dependency status](https://deps.rs/repo/github/p2p-research-tools/lightning-censorship-simulator/status.svg)](https://deps.rs/repo/github/p2p-research-tools/lightning-censorship-simulator)
 
 This is a set of binaries to simulate payment delivery in the Lightning network
 under various attack scenarios or analyse the network-level topology.
@@ -19,8 +22,8 @@ Run all unit tests:
 
 The binary reconstructs the network topology using an input graph, maps nodes to
 ASNs and uses the
-[lightning-simulator](https://github.com/cndolo/lightning-simulator) to simulate
-payment delivery in the network.
+[lightning-simulator](https://github.com/p2p-research-tools/lightning-simulator)
+to simulate payment delivery in the network.
 The tool simulates payment failure under different attack scenarios.
 
   <details>

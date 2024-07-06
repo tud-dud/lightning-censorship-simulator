@@ -7,8 +7,8 @@ default-run = "simulator"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-network-parser = { git = "https://github.com/cndolo/lightning-simulator"}
-lightning-simulator = { git = "https://github.com/cndolo/lightning-simulator"}
+network-parser = { git = "https://github.com/p2p-research-tools/lightning-simulator"}
+lightning-simulator = { git = "https://github.com/p2p-research-tools/lightning-simulator"}
 clap = { version = "4.0.22"}
 env_logger = "0.10.1"
 log = "0.4.20"

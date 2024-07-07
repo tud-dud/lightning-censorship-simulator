@@ -12,31 +12,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  coverage:
 
     runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        name: ⚙ Install stable toolchain
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: 🔬 Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          version: 0.30.0
-          args: '--exclude-files src/bin/*'
+      - name: 🔬 Generate code coverage
+        run: |
+          cargo tarpaulin --release --exclude-files src/bin/* --out xml
 
       - name: 🆙 Upload to codecov.io
         uses: codecov/codecov-action@v4
-
-      - name: 💾 Archive code coverage results
-        uses: actions/upload-artifact@v4
-        with:
-          name: code-coverage-report
-          path: cobertura.xml

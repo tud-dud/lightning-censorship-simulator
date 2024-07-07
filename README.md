@@ -25,6 +25,8 @@ ASNs and uses the
 [lightning-simulator](https://github.com/p2p-research-tools/lightning-simulator)
 to simulate payment delivery in the network.
 The tool simulates payment failure under different attack scenarios.
+We provide the snapshot of the LN in the `snapshots/` directory that was used
+to run our simulations.
 
   <details>
     <summary>usage</summary>

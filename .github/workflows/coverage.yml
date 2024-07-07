@@ -25,7 +25,9 @@ jobs:
 
       - name: 🔬 Generate code coverage
         run: |
-          cargo tarpaulin --release --exclude-files src/bin/* --out xml
+          cargo tarpaulin --release --out xml
 
       - name: 🆙 Upload to codecov.io
         uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

@@ -179,7 +179,7 @@ impl AsIpMap {
         as_channels
     }
 
-    pub(crate) fn get_asn_for_node(&self, node_id: &String) -> Option<Asn> {
+    pub fn get_asn_for_node(&self, node_id: &String) -> Option<Asn> {
         crate::find_key_for_value(&self.as_to_nodes, node_id)
     }
 }

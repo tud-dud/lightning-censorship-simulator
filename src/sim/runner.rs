@@ -83,7 +83,11 @@ impl SimBuilder {
                 usize::MAX,
             ),
         };
-        sim_results.push(SimResult::from_simlib_results(updated_results, num_nodes));
+        sim_results.push(SimResult::from_simlib_results(
+            updated_results,
+            num_nodes,
+            None,
+        ));
         summary.sim_results = sim_results;
         summary.per_sim_accuracy = per_sim_accuracy;
         info!(

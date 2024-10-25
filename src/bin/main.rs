@@ -8,8 +8,8 @@ use std::{
 };
 
 use simulator::{
-    AsIpMap, AsSelectionStrategy, PacketDropStrategy, PerStrategyResults, Report, SimBuilder,
-    SimOutput, SimResult,
+    AsIpMap, AsSelectionStrategy, PacketDropStrategy, PaymentsDist, PerStrategyResults, Report,
+    SimBuilder, SimOutput, SimResult,
 };
 
 #[derive(clap::Parser)]
@@ -160,9 +160,10 @@ fn asn_simulation(
                 &as_ip_map,
             );
             // add the baseline results
+            let payments_dist = get_inter_intra_dist(&baseline_result, &as_ip_map);
             attack_sim.sim_results.insert(
                 0,
-                SimResult::from_simlib_results(baseline_result.clone(), 0),
+                SimResult::from_simlib_results(baseline_result.clone(), 0, Some(payments_dist)),
             );
             attack_results.push(attack_sim);
         }
@@ -172,6 +173,37 @@ fn asn_simulation(
         })
     }
     per_strategy_results
+}
+
+fn get_inter_intra_dist(sim_result: &simlib::SimResult, as_ip_map: &AsIpMap) -> PaymentsDist {
+    let mut inter_failed = 0.0;
+    let mut inter_succ = 0.0;
+
+    for payment in sim_result.successful_payments.iter() {
+        let src_asn = as_ip_map
+            .get_asn_for_node(&payment.source)
+            .unwrap_or_default();
+        let dst_asn = as_ip_map
+            .get_asn_for_node(&payment.dest)
+            .unwrap_or_default();
+        if src_asn == dst_asn {
+            inter_succ += 1.0;
+        }
+    }
+    for payment in sim_result.failed_payments.iter() {
+        if let (Some(src_asn), Some(dst_asn)) = (
+            as_ip_map.get_asn_for_node(&payment.source),
+            as_ip_map.get_asn_for_node(&payment.dest),
+        ) {
+            if src_asn == dst_asn {
+                inter_failed += 1.0;
+            }
+        }
+    }
+    PaymentsDist {
+        inter_succ: inter_succ / sim_result.successful_payments.len() as f32,
+        inter_failed: inter_failed / sim_result.failed_payments.len() as f32,
+    }
 }
 
 #[cfg(test)]
@@ -207,5 +239,34 @@ mod tests {
         let baseline_result = sim_builder.simulate(pairs);
         let actual = asn_simulation(&sim_builder, baseline_result, congestion_rate);
         assert_eq!(actual.len(), 4);
+    }
+
+    #[test]
+    fn payment_distribution() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/lnbook_example_lnr.json"),
+                Lnresearch,
+            )
+            .unwrap(),
+            Lnresearch,
+        );
+        let mut sim = SimBuilder::new(
+            4711,
+            &graph,
+            1000,
+            0,
+            crate::AsSelectionStrategy::MaxChannels,
+        );
+        let pairs = [
+            ("alice".to_string(), "bob".to_string()),
+            ("chan".to_string(), "dina".to_string()),
+            ("chan".to_string(), "bob".to_string()),
+            ("alice".to_string(), "dina".to_string()),
+        ];
+        let sim_result = sim.simulate(pairs.into_iter());
+        let as_ip_map = AsIpMap::new(&graph, false);
+        let actual = get_inter_intra_dist(&sim_result, &as_ip_map);
+        assert!(actual.inter_succ.is_normal() || actual.inter_failed.is_normal());
     }
 }

@@ -50,6 +50,7 @@ pub struct SimResult {
     pub num_successful: usize,
     pub num_failed: usize,
     pub payments: Vec<PaymentInfo>,
+    pub payments_dist: Option<PaymentsDist>,
 }
 
 /// Number of correctly and falsely identified intra-AS payments for PacketDropStrategy::Intra
@@ -59,6 +60,13 @@ pub struct PerSimAccuracy {
     pub tpos: usize,
     pub fpos: usize,
     pub fneg: usize,
+}
+
+/// Share of inter/intra payments in the simulation. Only present for the baseline simulation
+#[derive(Debug, Default, Clone, Serialize, PartialEq)]
+pub struct PaymentsDist {
+    pub inter_succ: f32,
+    pub inter_failed: f32,
 }
 
 impl Report {
@@ -85,7 +93,11 @@ impl Report {
     }
 }
 impl SimResult {
-    pub fn from_simlib_results(sim_results: simlib::SimResult, num_nodes: usize) -> Self {
+    pub fn from_simlib_results(
+        sim_results: simlib::SimResult,
+        num_nodes: usize,
+        payments_dist: Option<PaymentsDist>,
+    ) -> Self {
         let mut payments: Vec<PaymentInfo> = sim_results
             .successful_payments
             .iter()
@@ -102,6 +114,7 @@ impl SimResult {
             num_successful: sim_results.num_succesful,
             num_failed: sim_results.num_failed,
             payments,
+            payments_dist,
         }
     }
 }
@@ -139,7 +152,7 @@ mod tests {
             )],
             ..Default::default()
         };
-        let actual = SimResult::from_simlib_results(sim_result.clone(), 0);
+        let actual = SimResult::from_simlib_results(sim_result.clone(), 0, None);
         let mut payments: Vec<PaymentInfo> = sim_result
             .successful_payments
             .iter()
@@ -156,6 +169,7 @@ mod tests {
             num_successful: 2,
             num_failed: 1,
             payments,
+            payments_dist: None,
         };
         assert_eq!(actual, expected);
     }

@@ -39,9 +39,9 @@ struct Cli {
     /// AS selection strategy. 0 for number of nodes and 1 for number of channels
     #[arg(long = "as-strategy", short = 's', default_value_t = 1)]
     as_sel_strategy: usize,
-    /// The percent (as an integer) of congested channels to simulate
-    #[arg(long = "congestion-rate", short = 'c', default_value_t = 5)]
-    congestion_rate: usize,
+    /// The percentage(s) (as a comma-separed list of integers) of congested channels to simulate
+    #[arg(long = "congestion-rate", short = 'c', value_delimiter = ',')]
+    congestion_rate: Vec<usize>,
     verbose: bool,
 }
 
@@ -99,7 +99,7 @@ fn main() {
             as_selection_strategy,
         );
         let baseline = builder.simulate(pairs.clone());
-        let per_strategy_results = asn_simulation(&builder, baseline, args.congestion_rate);
+        let per_strategy_results = asn_simulation(&builder, baseline, args.congestion_rate.clone());
         let sim_output = SimOutput {
             amt_sat: *amount,
             total_num_payments: args.num_pairs,
@@ -129,20 +129,22 @@ fn main() {
 fn asn_simulation(
     sim_builder: &SimBuilder,
     baseline_result: simlib::SimResult,
-    congestion_rate: usize,
+    congestion_rate: Vec<usize>,
 ) -> Vec<PerStrategyResults> {
     let mut per_strategy_results = vec![];
     let as_ip_map = AsIpMap::new(&sim_builder.graph, false);
     let attack_asns = sim_builder.get_adverserial_asns(&as_ip_map);
-    let drop_strategies = vec![
+    let mut drop_strategies = vec![
         PacketDropStrategy::All,
         PacketDropStrategy::IntraAs,
         PacketDropStrategy::InterAs,
-        PacketDropStrategy::Congestion {
-            congestion_rate,
-            graph: sim_builder.graph.clone(),
-        },
     ];
+    for perc in congestion_rate {
+        drop_strategies.push(PacketDropStrategy::Congestion {
+            congestion_rate: perc,
+            graph: sim_builder.graph.clone(),
+        });
+    }
     for strategy in drop_strategies.iter() {
         let mut attack_results = vec![];
         let intra_as_channel_ratios = if *strategy == PacketDropStrategy::IntraProbability {
@@ -227,7 +229,7 @@ mod tests {
         let num_adv_as = 1;
         let run = 0;
         let num_pairs = 3;
-        let congestion_rate = 10;
+        let congestion_rate = vec![5, 10];
         let mut sim_builder = SimBuilder::new(
             run,
             &graph,
@@ -238,7 +240,7 @@ mod tests {
         let pairs = simlib::Simulation::draw_n_pairs_for_simulation(&graph, num_pairs);
         let baseline_result = sim_builder.simulate(pairs);
         let actual = asn_simulation(&sim_builder, baseline_result, congestion_rate);
-        assert_eq!(actual.len(), 4);
+        assert_eq!(actual.len(), 5);
     }
 
     #[test]

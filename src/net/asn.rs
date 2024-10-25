@@ -47,7 +47,7 @@ impl AsIpMap {
     }
 
     /// Returns an ordered list of the n most-represented ASNs w.r.t the number of nodes.
-    /// The list of nodes is sorted in descending order of number of channels
+    /// The list of nodes is sorted in descending order of number of nodes
     pub(crate) fn top_n_asns_nodes(&self, n: usize, graph: &Graph) -> Vec<(Asn, Vec<ID>)> {
         let mut heap = BinaryHeap::with_capacity(n + 1);
         for (asn, mut nodes) in self.as_to_nodes.clone().into_iter() {
@@ -135,9 +135,7 @@ impl AsIpMap {
                     }
                     let mut same_asn = 0;
                     for e in edges.iter() {
-                        if let Some(dst_asn) =
-                            crate::find_key_for_value(&self.as_to_nodes, &e.destination)
-                        {
+                        if let Some(dst_asn) = self.get_asn_for_node(&e.destination) {
                             if dst_asn == *asn {
                                 same_asn += 1;
                             }
@@ -166,9 +164,7 @@ impl AsIpMap {
                         break;
                     }
                     for e in edges.iter() {
-                        if let Some(dst_asn) =
-                            crate::find_key_for_value(&self.as_to_nodes, &e.destination)
-                        {
+                        if let Some(dst_asn) = self.get_asn_for_node(&e.destination) {
                             if dst_asn == *asn {
                                 intra += 1;
                             } else {
@@ -181,6 +177,10 @@ impl AsIpMap {
             as_channels.insert(*asn, (intra, inter));
         }
         as_channels
+    }
+
+    pub(crate) fn get_asn_for_node(&self, node_id: &String) -> Option<Asn> {
+        crate::find_key_for_value(&self.as_to_nodes, node_id)
     }
 }
 
@@ -396,5 +396,31 @@ mod tests {
             let e = expected.get(&a.0).unwrap();
             assert_eq!(a.1, *e);
         }
+    }
+
+    #[test]
+    fn as_for_node() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/lnbook_example_lnr.json"),
+                Lnresearch,
+            )
+            .unwrap(),
+            Lnresearch,
+        );
+        let include_tor = true;
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
+        let nodes = [
+            "alice".to_string(),
+            "bob".to_string(),
+            "chan".to_string(),
+            "dina".to_string(),
+        ];
+        let expected = [24940, 24940, 797, 797];
+        let actual: Vec<Asn> = nodes
+            .iter()
+            .map(|n| as_ip_map.get_asn_for_node(&n).unwrap_or_default())
+            .collect();
+        assert_eq!(actual, expected);
     }
 }

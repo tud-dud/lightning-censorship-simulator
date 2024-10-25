@@ -11,7 +11,10 @@ use crate::PacketDropStrategy;
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Report(pub u64, pub Vec<SimOutput>);
+pub struct Report {
+    pub run: u64,
+    pub censor_sim_output: Vec<SimOutput>,
+}
 
 #[derive(Debug, Default, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -69,7 +72,7 @@ impl Report {
     }
 
     fn to_json_file(&self, output_path: PathBuf) -> Result<(), Box<dyn Error>> {
-        let run_as_string = format!("{}{:?}", "simulation-run", self.0);
+        let run_as_string = format!("{}{:?}", "simulation-run", self.run);
         let mut file_output_path = output_path;
         file_output_path.push(format!("{}{}", run_as_string, ".json"));
         let file = File::create(file_output_path.clone()).expect("Error creating file.");

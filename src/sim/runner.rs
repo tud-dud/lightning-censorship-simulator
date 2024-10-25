@@ -69,6 +69,19 @@ impl SimBuilder {
                 Self::apply_inter_as_drop_strategy(baseline_result, asn, as_ip_map),
                 usize::MAX,
             ),
+            PacketDropStrategy::Congestion {
+                congestion_rate,
+                ref graph,
+            } => (
+                Self::apply_congested_channels_strategy(
+                    baseline_result,
+                    asn,
+                    as_ip_map,
+                    congestion_rate,
+                    graph,
+                ),
+                usize::MAX,
+            ),
         };
         sim_results.push(SimResult::from_simlib_results(updated_results, num_nodes));
         summary.sim_results = sim_results;

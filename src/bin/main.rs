@@ -39,6 +39,9 @@ struct Cli {
     /// AS selection strategy. 0 for number of nodes and 1 for number of channels
     #[arg(long = "as-strategy", short = 's', default_value_t = 1)]
     as_sel_strategy: usize,
+    /// The percent (as an integer) of congested channels to simulate
+    #[arg(long = "congestion-rate", short = 'c', default_value_t = 5)]
+    congestion_rate: usize,
     verbose: bool,
 }
 
@@ -96,7 +99,7 @@ fn main() {
             as_selection_strategy,
         );
         let baseline = builder.simulate(pairs.clone());
-        let per_strategy_results = asn_simulation(&builder, baseline);
+        let per_strategy_results = asn_simulation(&builder, baseline, args.congestion_rate);
         let sim_output = SimOutput {
             amt_sat: *amount,
             total_num_payments: args.num_pairs,
@@ -106,9 +109,15 @@ fn main() {
         info!("Completed simulation for {amount} sat.");
     });
     let sim_report = if let Ok(s) = results.lock() {
-        Report(args.run, s.clone())
+        Report {
+            run: args.run,
+            censor_sim_output: s.clone(),
+        }
     } else {
-        Report(args.run, vec![])
+        Report {
+            run: args.run,
+            ..Default::default()
+        }
     };
 
     sim_report
@@ -120,6 +129,7 @@ fn main() {
 fn asn_simulation(
     sim_builder: &SimBuilder,
     baseline_result: simlib::SimResult,
+    congestion_rate: usize,
 ) -> Vec<PerStrategyResults> {
     let mut per_strategy_results = vec![];
     let as_ip_map = AsIpMap::new(&sim_builder.graph, false);
@@ -128,10 +138,14 @@ fn asn_simulation(
         PacketDropStrategy::All,
         PacketDropStrategy::IntraAs,
         PacketDropStrategy::InterAs,
+        PacketDropStrategy::Congestion {
+            congestion_rate,
+            graph: sim_builder.graph.clone(),
+        },
     ];
-    for strategy in drop_strategies {
+    for strategy in drop_strategies.iter() {
         let mut attack_results = vec![];
-        let intra_as_channel_ratios = if strategy == PacketDropStrategy::IntraProbability {
+        let intra_as_channel_ratios = if *strategy == PacketDropStrategy::IntraProbability {
             as_ip_map.get_intra_as_channels_ratio(&sim_builder.graph)
         } else {
             HashMap::default()
@@ -141,7 +155,7 @@ fn asn_simulation(
                 baseline_result.clone(),
                 *asn,
                 nodes,
-                strategy,
+                strategy.clone(),
                 intra_as_channel_ratios.get(asn),
                 &as_ip_map,
             );
@@ -153,7 +167,7 @@ fn asn_simulation(
             attack_results.push(attack_sim);
         }
         per_strategy_results.push(PerStrategyResults {
-            strategy,
+            strategy: strategy.clone(),
             attack_results,
         })
     }
@@ -181,6 +195,7 @@ mod tests {
         let num_adv_as = 1;
         let run = 0;
         let num_pairs = 3;
+        let congestion_rate = 10;
         let mut sim_builder = SimBuilder::new(
             run,
             &graph,
@@ -190,7 +205,7 @@ mod tests {
         );
         let pairs = simlib::Simulation::draw_n_pairs_for_simulation(&graph, num_pairs);
         let baseline_result = sim_builder.simulate(pairs);
-        let actual = asn_simulation(&sim_builder, baseline_result);
-        assert_eq!(actual.len(), 3);
+        let actual = asn_simulation(&sim_builder, baseline_result, congestion_rate);
+        assert_eq!(actual.len(), 4);
     }
 }

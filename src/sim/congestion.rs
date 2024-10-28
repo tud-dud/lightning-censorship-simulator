@@ -78,7 +78,7 @@ impl SimBuilder {
             }
         }
         as_channels.sort_unstable_by(|a, b| b.capacity.partial_cmp(&a.capacity).unwrap());
-        let num_congested = (congestion_rate as f32 / 100.0) as usize * as_channels.len();
+        let num_congested = Self::calc_num_congested_channels(congestion_rate, as_channels.len());
         info!(
             "Marking {}% (={}) of AS {}'s channels as congested.",
             congestion_rate, num_congested, asn
@@ -95,6 +95,12 @@ impl SimBuilder {
             }
         }
         edges
+    }
+
+    fn calc_num_congested_channels(congestion_rate: usize, total_num_channels: usize) -> usize {
+        let num_affected_channels = (congestion_rate as f32 / 100.0) * total_num_channels as f32;
+        // in case we receive >100% as input
+        std::cmp::min(num_affected_channels.round() as usize, total_num_channels)
     }
 }
 
@@ -178,5 +184,26 @@ mod tests {
         assert_eq!(actual.successful_payments[0].dest, "bob".to_owned());
         assert_eq!(actual.successful_payments[1].source, "chan".to_owned());
         assert_eq!(actual.successful_payments[1].dest, "dina".to_owned());
+    }
+
+    #[test]
+    fn num_congested() {
+        let total_channels = 1000;
+        let congestion_rate = 0;
+        let actual = SimBuilder::calc_num_congested_channels(congestion_rate, total_channels);
+        let expected = 0;
+        assert_eq!(actual, expected);
+        let congestion_rate = 1;
+        let actual = SimBuilder::calc_num_congested_channels(congestion_rate, total_channels);
+        let expected = 10;
+        assert_eq!(actual, expected);
+        let congestion_rate = 5;
+        let actual = SimBuilder::calc_num_congested_channels(congestion_rate, total_channels);
+        let expected = 50;
+        assert_eq!(actual, expected);
+        let congestion_rate = 110;
+        let actual = SimBuilder::calc_num_congested_channels(congestion_rate, total_channels);
+        let expected = 1000;
+        assert_eq!(actual, expected);
     }
 }

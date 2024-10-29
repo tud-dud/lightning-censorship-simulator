@@ -105,16 +105,27 @@ impl SimBuilder {
             failed_payments: sim_result.failed_payments,
             ..Default::default()
         };
+        let as_nodes = as_ip_map
+            .as_to_nodes
+            .get(&asn)
+            .unwrap_or(&vec![])
+            .to_owned();
         for mut p in sim_result.successful_payments {
-            let src_asn =
-                crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.dest).unwrap_or_default();
-            let dest_asn =
-                crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.source).unwrap_or_default();
-            if src_asn == asn && dest_asn == asn {
-                p.succeeded = false;
-                p.used_paths = vec![];
-                updated_results.num_failed += 1;
-                updated_results.failed_payments.push(p);
+            if Self::payment_involves_asn(&p, &as_nodes) {
+                for path in &p.used_paths.clone() {
+                    let involved_asns =
+                        as_ip_map.get_involved_asns(&path.path.get_involved_nodes());
+                    if involved_asns.len() == 1 && involved_asns.contains(&asn) {
+                        p.succeeded = false;
+                        p.used_paths = vec![];
+                        updated_results.num_failed += 1;
+                        updated_results.failed_payments.push(p.clone());
+                        break;
+                    } else {
+                        updated_results.num_succesful += 1;
+                        updated_results.successful_payments.push(p.clone());
+                    }
+                }
             } else {
                 // does not involve any AS node so leave as is
                 updated_results.num_succesful += 1;
@@ -141,19 +152,21 @@ impl SimBuilder {
         let as_nodes = as_ip_map.as_to_nodes.get(&asn).unwrap();
         for mut p in sim_result.successful_payments {
             if Self::payment_involves_asn(&p, as_nodes) {
-                let src_asn =
-                    crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.dest).unwrap_or_default();
-                let dest_asn = crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.source)
-                    .unwrap_or_default();
-                if src_asn != asn || dest_asn != asn {
-                    p.succeeded = false;
-                    p.used_paths = vec![];
-                    updated_results.num_failed += 1;
-                    updated_results.failed_payments.push(p.clone());
-                } else {
-                    // does not leave the AS so leave as is
-                    updated_results.num_succesful += 1;
-                    updated_results.successful_payments.push(p);
+                for path in p.used_paths.clone() {
+                    let involved_asns =
+                        as_ip_map.get_involved_asns(&path.path.get_involved_nodes());
+                    // contains more than just this as so at one point it will be censored
+                    if involved_asns.len() > 1 && involved_asns.contains(&asn) {
+                        p.succeeded = false;
+                        p.used_paths = vec![];
+                        updated_results.num_failed += 1;
+                        updated_results.failed_payments.push(p.clone());
+                        break;
+                    } else {
+                        // does not leave the AS so leave as is
+                        updated_results.num_succesful += 1;
+                        updated_results.successful_payments.push(p.clone());
+                    }
                 }
             } else {
                 // does not involve any AS node so leave as is

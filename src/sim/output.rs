@@ -51,6 +51,14 @@ pub struct SimResult {
     pub num_failed: usize,
     pub payments: Vec<PaymentInfo>,
     pub payments_dist: Option<PaymentsDist>,
+    pub involved_asns: Option<InvolvedAsns>,
+}
+
+/// A list containing the number of involved ASNs for each successful payment
+#[derive(Debug, Default, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct InvolvedAsns {
+    pub num_asns: Vec<usize>,
 }
 
 /// Number of correctly and falsely identified intra-AS payments for PacketDropStrategy::Intra
@@ -62,8 +70,10 @@ pub struct PerSimAccuracy {
     pub fneg: usize,
 }
 
-/// Share of inter/intra payments in the simulation. Only present for the baseline simulation
+/// Share of {Successful | failed} inter-AS payments in the simulation. Only present for the baseline simulation
+/// 100.0 - (inter_succ + inter_failed) = intra-AS payments
 #[derive(Debug, Default, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct PaymentsDist {
     pub inter_succ: f32,
     pub inter_failed: f32,
@@ -97,6 +107,7 @@ impl SimResult {
         sim_results: simlib::SimResult,
         num_nodes: usize,
         payments_dist: Option<PaymentsDist>,
+        involved_asns: Option<InvolvedAsns>,
     ) -> Self {
         let mut payments: Vec<PaymentInfo> = sim_results
             .successful_payments
@@ -115,6 +126,7 @@ impl SimResult {
             num_failed: sim_results.num_failed,
             payments,
             payments_dist,
+            involved_asns,
         }
     }
 }
@@ -152,7 +164,7 @@ mod tests {
             )],
             ..Default::default()
         };
-        let actual = SimResult::from_simlib_results(sim_result.clone(), 0, None);
+        let actual = SimResult::from_simlib_results(sim_result.clone(), 0, None, None);
         let mut payments: Vec<PaymentInfo> = sim_result
             .successful_payments
             .iter()
@@ -170,6 +182,7 @@ mod tests {
             num_failed: 1,
             payments,
             payments_dist: None,
+            involved_asns: None,
         };
         assert_eq!(actual, expected);
     }

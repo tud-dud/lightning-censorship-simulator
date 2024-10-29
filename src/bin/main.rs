@@ -8,8 +8,8 @@ use std::{
 };
 
 use simulator::{
-    AsIpMap, AsSelectionStrategy, PacketDropStrategy, PaymentsDist, PerStrategyResults, Report,
-    SimBuilder, SimOutput, SimResult,
+    AsIpMap, AsSelectionStrategy, InvolvedAsns, PacketDropStrategy, PaymentsDist,
+    PerStrategyResults, Report, SimBuilder, SimOutput, SimResult,
 };
 
 #[derive(clap::Parser)]
@@ -162,10 +162,16 @@ fn asn_simulation(
                 &as_ip_map,
             );
             // add the baseline results
-            let payments_dist = get_inter_intra_dist(&baseline_result, &as_ip_map);
+            let payments_dist = get_inter_payments_dist(&baseline_result, &as_ip_map);
+            let involved_asns = get_num_involved_asns(&baseline_result, &as_ip_map);
             attack_sim.sim_results.insert(
                 0,
-                SimResult::from_simlib_results(baseline_result.clone(), 0, Some(payments_dist)),
+                SimResult::from_simlib_results(
+                    baseline_result.clone(),
+                    0,
+                    Some(payments_dist),
+                    Some(involved_asns),
+                ),
             );
             attack_results.push(attack_sim);
         }
@@ -177,7 +183,7 @@ fn asn_simulation(
     per_strategy_results
 }
 
-fn get_inter_intra_dist(sim_result: &simlib::SimResult, as_ip_map: &AsIpMap) -> PaymentsDist {
+fn get_inter_payments_dist(sim_result: &simlib::SimResult, as_ip_map: &AsIpMap) -> PaymentsDist {
     let mut inter_failed = 0.0;
     let mut inter_succ = 0.0;
 
@@ -206,6 +212,18 @@ fn get_inter_intra_dist(sim_result: &simlib::SimResult, as_ip_map: &AsIpMap) -> 
         inter_succ: inter_succ / sim_result.successful_payments.len() as f32,
         inter_failed: inter_failed / sim_result.failed_payments.len() as f32,
     }
+}
+
+fn get_num_involved_asns(sim_result: &simlib::SimResult, as_ip_map: &AsIpMap) -> InvolvedAsns {
+    let mut num_asns = vec![];
+    for payment in sim_result.successful_payments.iter() {
+        for path in &payment.used_paths {
+            let asns = as_ip_map.get_involved_asns(&path.path.get_involved_nodes());
+            num_asns.push(asns.len());
+        }
+    }
+
+    InvolvedAsns { num_asns }
 }
 
 #[cfg(test)]
@@ -268,7 +286,7 @@ mod tests {
         ];
         let sim_result = sim.simulate(pairs.into_iter());
         let as_ip_map = AsIpMap::new(&graph, false);
-        let actual = get_inter_intra_dist(&sim_result, &as_ip_map);
+        let actual = get_inter_payments_dist(&sim_result, &as_ip_map);
         assert!(actual.inter_succ.is_normal() || actual.inter_failed.is_normal());
     }
 }

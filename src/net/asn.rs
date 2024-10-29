@@ -5,7 +5,7 @@ use super::{Asn, DbReader};
 use simlib::{graph::Graph, Node, ID};
 use std::{
     cmp::Reverse,
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap, HashSet},
     str::FromStr,
 };
 
@@ -181,6 +181,13 @@ impl AsIpMap {
 
     pub fn get_asn_for_node(&self, node_id: &String) -> Option<Asn> {
         crate::find_key_for_value(&self.as_to_nodes, node_id)
+    }
+
+    pub fn get_involved_asns(&self, nodes: &[ID]) -> HashSet<Asn> {
+        nodes
+            .iter()
+            .map(|n| self.get_asn_for_node(n).unwrap_or_default())
+            .collect()
     }
 }
 
@@ -422,5 +429,31 @@ mod tests {
             .map(|n| as_ip_map.get_asn_for_node(&n).unwrap_or_default())
             .collect();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn involved_asns() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/lnbook_example_lnr.json"),
+                Lnresearch,
+            )
+            .unwrap(),
+            Lnresearch,
+        );
+        let include_tor = true;
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
+        let nodes = vec![
+            "alice".to_string(),
+            "bob".to_string(),
+            "chan".to_string(),
+            "dina".to_string(),
+        ];
+        let actual = as_ip_map.get_involved_asns(&nodes);
+        let expected = HashSet::from([797, 24940]);
+        assert_eq!(actual.len(), expected.len());
+        for e in expected {
+            assert!(actual.contains(&e))
+        }
     }
 }

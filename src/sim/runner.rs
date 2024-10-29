@@ -87,6 +87,7 @@ impl SimBuilder {
             updated_results,
             num_nodes,
             None,
+            None,
         ));
         summary.sim_results = sim_results;
         summary.per_sim_accuracy = per_sim_accuracy;

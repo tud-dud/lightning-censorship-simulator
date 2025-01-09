@@ -179,6 +179,43 @@ impl AsIpMap {
         as_channels
     }
 
+    /// Returns the share of the ASNs capacity in (intra, inter) channels per AS
+    pub fn get_intra_inter_ratio_of_as_channels_capacity(
+        &self,
+        graph: &Graph,
+    ) -> HashMap<u32, (f32, f32)> {
+        let mut as_channels = HashMap::with_capacity(self.as_to_nodes.len());
+
+        for (asn, nodes) in self.as_to_nodes.iter() {
+            let mut inter = 0;
+            let mut intra = 0;
+            let mut total_cap = 0;
+            for node in nodes {
+                if let Some(edges) = graph.get_edges_for_node(node) {
+                    let total = edges.len();
+                    if total.eq(&0) {
+                        // shouldnt happen
+                        break;
+                    }
+                    for e in edges.iter() {
+                        total_cap += e.capacity;
+                        if let Some(dst_asn) = self.get_asn_for_node(&e.destination) {
+                            if dst_asn == *asn {
+                                intra += e.capacity;
+                            } else {
+                                inter += e.capacity;
+                            }
+                        }
+                    }
+                }
+            }
+            let intra_cap = intra as f32 / total_cap as f32;
+            let inter_cap = inter as f32 / total_cap as f32;
+            as_channels.insert(*asn, (intra_cap, inter_cap));
+        }
+        as_channels
+    }
+
     pub fn get_asn_for_node(&self, node_id: &String) -> Option<Asn> {
         crate::find_key_for_value(&self.as_to_nodes, node_id)
     }
@@ -195,6 +232,7 @@ impl AsIpMap {
 mod tests {
 
     use super::*;
+    use approx::*;
     use network_parser::{Address, GraphSource::*};
     use simlib::graph::Graph;
     use std::path::Path;
@@ -398,6 +436,45 @@ mod tests {
         let as_ip_map = AsIpMap::new(&graph, include_tor);
         let actual = as_ip_map.get_sum_of_as_channels(&graph);
         let expected = HashMap::from([(24940, (2, 2)), (797, (0, 2))]);
+        assert_eq!(actual.len(), expected.len());
+        for a in actual {
+            let e = expected.get(&a.0).unwrap();
+            assert_eq!(a.1, *e);
+        }
+    }
+
+    #[test]
+    fn ratio_as_channels() {
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/lnbook_example_lnr.json"),
+                Lnresearch,
+            )
+            .unwrap(),
+            Lnresearch,
+        );
+        let include_tor = true;
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
+        let actual = as_ip_map.get_intra_inter_ratio_of_as_channels_capacity(&graph);
+        let expected = HashMap::from([(24940, (0.05, 0.9)), (797, (0.097, 0.9))]);
+        assert_eq!(actual.len(), expected.len());
+        for a in actual {
+            let (exp_intra, exp_inter) = expected.get(&a.0).unwrap();
+            let (actual_intra, actual_inter) = a.1;
+            assert_abs_diff_eq!(*exp_intra, actual_intra, epsilon = 0.05);
+            assert_abs_diff_eq!(*exp_inter, actual_inter, epsilon = 0.05);
+        }
+        let graph = Graph::to_sim_graph(
+            &network_parser::Graph::from_json_file(
+                &Path::new("test_data/trivial_connected_lnd.json"),
+                Lnd,
+            )
+            .unwrap(),
+            Lnd,
+        );
+        let as_ip_map = AsIpMap::new(&graph, include_tor);
+        let actual = as_ip_map.get_intra_inter_ratio_of_as_channels_capacity(&graph);
+        let expected = HashMap::from([(24940, (0.5, 0.5)), (797, (0.0, 1.0))]);
         assert_eq!(actual.len(), expected.len());
         for a in actual {
             let e = expected.get(&a.0).unwrap();

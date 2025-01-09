@@ -7,7 +7,7 @@ impl SimBuilder {
     /// Uniformly select a ratio then generate a Boolean outcome for that
     pub(crate) fn apply_prob_drop_strategy(
         sim_result: simlib::SimResult,
-        ratios: &Vec<f32>,
+        ratios: &[f32],
         asn_nodes: &[ID],
         asn: Asn,
         as_ip_map: &AsIpMap,

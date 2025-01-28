@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+title: "Payment Censorship in the Lightning Network Despite Encrypted Communication"
+repository-code: 'https://github.com/tud-dud/lightning-censorship-simulator'
+type: inproceedings
+authors:
+  - given-names: Charmaine
+    family-names: Ndolo
+    affiliation: Dresden University of Technology
+  - given-names: Florian
+    family-names: Tschorsch
+    affiliation: Dresden University of Technology
+booktitle: "6th Conference on Advances in Financial Technologies (AFT 2024)"
+year: 2024
+publisher: "Schloss Dagstuhl -- Leibniz-Zentrum für Informatik"
+doi: 10.4230/LIPIcs.AFT.2024.12

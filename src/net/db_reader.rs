@@ -1,6 +1,6 @@
 use super::Asn;
 use log::{debug, warn};
-use maxminddb::{geoip2, MaxMindDBError};
+use maxminddb::{geoip2, MaxMindDbError};
 use std::net::IpAddr;
 
 static AS_ISP_DB_PATH: &str = "./src/net/geolite2/GeoLite2-ASN_20240116/GeoLite2-ASN.mmdb";
@@ -18,9 +18,16 @@ impl DbReader {
     }
 
     pub fn lookup_asn(&self, ip: IpAddr) -> Option<Asn> {
-        let asn: Result<geoip2::Asn, MaxMindDBError> = self.reader.lookup(ip);
+        let asn: Result<Option<geoip2::Asn>, MaxMindDbError> = self.reader.lookup(ip);
         match asn {
-            Ok(asn_info) => asn_info.autonomous_system_number,
+            Ok(asn_info) => {
+                if let Some(asn) = asn_info {
+                    asn.autonomous_system_number
+                } else {
+                    warn!("ASN for {} now available.", ip);
+                    None
+                }
+            }
             Err(err) => {
                 warn!("ASN lookup for {} failed: {}", ip, err);
                 None

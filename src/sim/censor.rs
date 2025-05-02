@@ -1,6 +1,6 @@
 use super::{output::*, SimBuilder};
 use crate::{net::Asn, AsIpMap};
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use rand::{rng, seq::IndexedRandom, Rng};
 use simlib::ID;
 
 impl SimBuilder {
@@ -21,14 +21,14 @@ impl SimBuilder {
             ..Default::default()
         };
         let (mut tpos, mut fpos, mut fneg) = (0, 0, 0);
-        let mut rng = thread_rng();
+        let mut rng = rng();
         for mut p in sim_result.successful_payments {
             let dest_asn =
                 crate::find_key_for_value(&as_ip_map.as_to_nodes, &p.dest).unwrap_or_default();
             if Self::payment_involves_asn(&p, asn_nodes) {
                 // only payments affected by the censor
                 if let Some(prob) = ratios.choose(&mut rng) {
-                    let payment_fate = rng.gen_bool(*prob as f64);
+                    let payment_fate = rng.random_bool(*prob as f64);
                     if payment_fate {
                         // dropped
                         p.succeeded = false;
